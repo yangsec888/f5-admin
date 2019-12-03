@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to pull F5 running configuration. Then print out
+# a list of VIPs that do not meet our basic clientssl configuration standard:
+#    a. Missing clientssl
+#    b.
+################################################################################
+# Version: 0.2, Date: September 27 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ gap_client-ssl --node xxx
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+#from client import F5Client
+import f5
+from f5.util import *
+import argparse
+import os
+from os.path import isfile, join
+from multiprocessing import Pool, TimeoutError
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will query the F5 node and pull out the client-ssl audit report for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=True)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-l','--list',help='(Optional) List of F5 VIPs with https service. ', action='store_true', default=False, required=False)
+parser.add_argument('-t','--report',help='(Optional) Write out detail table report csv file. ', action='store_true', default=False,required=False)
+args = parser.parse_args()
+
+# bypass the build-in limit taking multple arguments for the worker process: https://stackoverflow.com/questions/5442910/python-multiprocessing-pool-map-for-multiple-arguments
+def multi_run_wrapper(args):
+   return rpt_data_worker(*args)
+# worker process to pull data from F5 cache configuratin file
+def rpt_data_worker(node,key,obj):
+    with f5.F5Client(credential, 7, args.verbose) as my_f5:
+        my_f5.load(node)
+        conn=my_f5.ssh_connect()
+        name = key.replace('ltm virtual ','')
+        vip = my_f5.search_vip(obj)
+        desc = my_f5.search_desc(obj)
+        client_ssl_name = my_f5.search_client_ssl(obj)
+        client_ssl_parent_name = ""
+        cert_name = ""
+        if len(client_ssl_name) > 0:
+            client_ssl_obj_key="ltm profile client-ssl " + client_ssl_name + " "
+            if client_ssl_obj_key in my_f5.top_objs:
+                client_ssl_obj = my_f5.top_objs[client_ssl_obj_key]
+                cert_name = my_f5.search_cert_in_client_ssl_profile(client_ssl_obj).strip()
+                client_ssl_parent_name=my_f5.search_client_ssl_parent(client_ssl_obj)
+            else:  # by pass f5 bug 'tmsh list' don't include clientssl obj
+                cert_name = "default.crt"
+                client_ssl_parent_name = "N/A"
+            cert_path=my_f5.get_cert_local_path(conn,cert_name)
+            cert_expr=my_f5.get_cert_expiration(conn,cert_path)
+        else:
+            cert = "N/A"
+            cert_expr = "N/self.assertIsNone(actual, 'message')"
+        conn.close()
+    return {"name":name, "vip":vip, "desc":desc, "client_ssl_name":client_ssl_name, "client_ssl_parent_name":client_ssl_parent_name, "cert_name":cert_name, "cert_expr":cert_expr}
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple command argument check
+    if not (args.node or args.report or args.list):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+    # simple validation on node
+    if args.node:
+        if not is_valid_hostname(args.node):
+            print("Error - unknown hostname name:",args.node)
+            exit(1)
+    # Step 1: setup F5 connection string
+    if args.password:
+        if args.user:
+            credential = {
+                "user_name": str(args.user).strip(),
+                "user_pass": str(args.password)
+            }
+        else:
+            credential = {
+                "user_name": "root",
+                "user_pass": str(args.password)
+            }
+    elif args.user:
+        credential = {
+            "user_name": str(args.user).strip(),
+            "user_pass": None
+        }
+    else:
+        credential=None
+
+    # Initialize a F5 instance
+    with f5.F5Client(credential, 7, args.verbose) as my_f5:
+        my_f5.load(args.node)
+        vs_objs = my_f5.filter_f5_objs(my_f5.top_objs, "ltm virtual ")
+        vs_https_objs = my_f5.pattern_filter_f5_objs(vs_objs, "\s+destination\s.*:https")
+        print("Total Number of HTTPs VIPs: ", len(list(vs_https_objs.keys())), "\n")
+
+        if args.list:
+            for f in list(vs_https_objs.keys()):
+                print(f.replace('ltm virtual ',''))
+            exit(0)
+
+        # Report wtih VIP(s) clientssl profile
+        if args.report:
+            # Initialize the report data structure
+            client_ssl_rpt_data = []
+            my_pool = Pool(processes=8)
+            worker_args=[]
+            #build multiprocessing argument list
+            for key,obj in vs_https_objs.items():
+                worker_args.append((args.node,key,obj))
+            for i in my_pool.imap_unordered(multi_run_wrapper, worker_args):
+                client_ssl_rpt_data.append(i)
+            # write out the report
+            report_file = args.node + "_" +"https_client-ssl.csv"
+            with open(report_file,"w") as fd:
+                fd.write("Name, VIP, Desc, Client-ssl, Client-ssl Parent, Cert, Cert Expiration"+"\n")
+                for val in client_ssl_rpt_data:
+                    my_line = val["name"] + ", " + val["vip"] + " , " + val["desc"] + " , " + val["client_ssl_name"] + "," + val["client_ssl_parent_name"] + "," + val["cert_name"] + "," + val["cert_expr"] + "\n"
+                    fd.write(my_line)
+            # Print the confirmation
+            print("Details of the report can be found in local directory: ",report_file)

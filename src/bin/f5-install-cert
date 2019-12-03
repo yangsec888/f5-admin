@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to intall the certs into the remote F5.
+# Based on the F5 article: https://support.f5.com/csp/article/K14031
+#
+################################################################################
+# Version: 0.1, Date: July 01 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-install-cert --node xxx --crt abc --key xyz
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import f5_admin
+from f5_admin.util import *
+import argparse
+import getpass
+import sys
+import os
+import re
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will patch the running configuration. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-l','--list', help='File with F5 nodes one entry per line',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=True)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-c','--crt',help='Digital cert file with .crt extension ', required=True)
+parser.add_argument('-k','--key',help='Digital key file with .key extension ', required=True)
+parser.add_argument('-b','--bundle',help='(Optional) CA bundle file with .ca-bundle extension ', required=False)
+
+
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple program argument check
+    if not args.node and not args.list:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    elif args.node and args.list:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    #else:
+        # do nothing. program proceeding
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+    # Setup the F5 node list based on the argument input
+    if args.list:
+        nodes=file_to_list(args.list)
+    else:
+        nodes=[args.node]
+
+    #  Initialize a F5 instance
+    with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+        # Setup the F5 TMSH command pre-fix based on the user
+        if my_f5.credential["user_name"] == "root":
+            cmd_prefix = "tmsh "
+        else:
+            cmd_prefix = ""
+        for node in nodes:
+            print("\nPatching F5 node: ",node, "...","\n")
+            my_f5.load(node)
+            # Section I - evaluate the local cert file - upload a copy to F5 if exist
+            if not os.path.isfile(args.crt):
+                print("Please check your file path again: ",args.crt)
+                sys.exit(1)
+            else:
+                if "/" in args.crt:
+                    crt_dest = "/var/tmp/" + args.crt.split("/")[-1]
+                    crt_name = args.crt.split("/")[-1]
+                else:
+                    crt_dest = "/var/tmp/" + args.crt
+                    crt_name = args.crt
+                if args.user:
+                    cmd_01 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.crt + " " + args.user + "@" + node + ":" + crt_dest
+                else:
+                    cmd_01 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.crt + " root@" + node + ":" + crt_dest
+                print("Execute shell command: ", cmd_01)
+                os.system(cmd_01)
+            cmd_02 = cmd_prefix + "install /sys crypto cert " + crt_name + " from-local-file " + crt_dest
+            cmd_03 = cmd_prefix + "list /sys crypto cert " + crt_name
+            # Section II - evaluate the local key file - upload a copy to F5 if exist
+            if not os.path.isfile(args.key):
+                print("Please check your file path again: ",args.key)
+                sys.exit(1)
+            else:
+                if "/" in args.key:
+                    key_dest = "/var/tmp/" + args.key.split("/")[-1]
+                    key_name = args.key.split("/")[-1]
+                else:
+                    key_dest = "/var/tmp/" + args.key
+                    key_name = args.key
+                if args.user:
+                    cmd_04 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.key + " " + args.user + "@" + node + ":" + key_dest
+                else:
+                    cmd_04 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.key + " root@" + node + ":" + key_dest
+                print("Execute shell command: ", cmd_04)
+                os.system(cmd_04)
+            cmd_05 = cmd_prefix + "install /sys crypto key " + key_name + " from-local-file " + key_dest
+            cmd_06 = cmd_prefix + "list /sys crypto key " + key_name
+            # Section III - evaluate the local ca-bundle file - upload a copy to F5 if exist
+            if args.bundle and not os.path.isfile(args.crt):
+                print("Please check your file path again: ",args.crt)
+                sys.exit(1)
+            elif args.bundle:
+                if "/" in args.bundle:
+                    bundle_dest = "/var/tmp/" + args.bundle.split("/")[-1]
+                    bundle_name = args.bundle.split("/")[-1]
+                else:
+                    bundle_dest = "/var/tmp/" + args.bundle
+                    bundle_name = args.bundle
+                if args.user:
+                    cmd_11 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.bundle + " " + args.user + "@" + node + ":" + bundle_dest
+                else:
+                    cmd_11 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.bundle + " root@" + node + ":" + bundle_dest
+                print("Execute shell command: ", cmd_11)
+                os.system(cmd_11)
+                cmd_12 = cmd_prefix + "install /sys crypto cert " + bundle_name + " from-local-file " + bundle_dest
+                cmd_13 = cmd_prefix + "list /sys crypto cert " + bundle_name + ".crt"
+                cmd_14 = "rm -rf " + bundle_dest
+            # Section IV - save it, sync up and clean up
+            # Save the configuration
+            cmd_07 = cmd_prefix + "save /sys config"
+            # sync to slave failover device
+            cmd_08 = cmd_prefix + "run /cm config-sync to-group device-group-failover"
+            # clean up
+            cmd_09 = "rm -rf " + crt_dest
+            cmd_10 = "rm -rf " + key_dest
+            # Section V - Remote Executions on the command chain
+            conn = my_f5.ssh_connect()
+            if args.bundle:
+                cmd_chain = [cmd_02,cmd_03,cmd_05,cmd_06,cmd_12,cmd_13,cmd_07,cmd_08,cmd_09,cmd_10,cmd_14]
+            else:
+                cmd_chain = [cmd_02,cmd_03,cmd_05,cmd_06,cmd_07,cmd_08,cmd_09,cmd_10]
+            # execute the command chain one at a time
+            for y in cmd_chain:
+                out = my_f5.ssh_command(conn,y,"")
+                if len(out) > 0 and args.verbose:
+                    print("Here is the command execution result: ")
+                    for z in out:
+                        print(z)
+            conn.close()
+    # Step 5: Print the confirmation
+    print("""
+All done. Bye!""")

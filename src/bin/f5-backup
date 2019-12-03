@@ -1,0 +1,98 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this script is to backup F5 node before any upgrade
+# or hotfix installation.
+################################################################################
+# Version:      0.4,                                   Date: December 21 2018
+# Author:       Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#               $ f5-backup -h
+###############################################################################
+# Prerequisite:   You have sufficient access privilege to the F5 node.
+#
+###############################################################################
+""")
+import sys
+import os
+import getpass
+import datetime
+import f5_admin
+import argparse
+from f5_admin.util import *
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will patch the running configuration. ')
+parser.add_argument('-n','--node', help='(Optional) Remote F5 node hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 node logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 node password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+args = parser.parse_args()
+
+# simple legal disclaimer
+disclaimer = input("""
+# Legal Disclaimer:
+It's dangerous to execute remote commands in general, if you don't understand
+what it does for you. Do you have the opportunity to read the script and fully
+understand what it does, and agree NOT to hold the author on any liability
+should any unexpected bad thing happen? (Y or N)""")
+if disclaimer.upper() == "Y":
+    print("\nProceeding to the program...")
+else:
+    print("Quitting the program. Have a great day! ")
+    sys.exit(1)
+
+################################################################################
+#                               Main Program
+################################################################################
+if __name__ == '__main__':
+    today = datetime.date.today().strftime('%m%d%Y')
+    ## Setup F5 connection based on user inputs
+    if not args.node:
+        node=input("Establish F5 node connection. Please enter the F5 hostname: ")
+    else:
+        node=args.node
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+    # Initialize the F5 instance then execute the backup jobs
+    with f5_admin.F5Client(credential, 7, False) as client:
+        client.load(node)
+        # Setup F5 connection
+        conn = client.ssh_connect()
+        credential=client.credential
+        # Build the backup command strings
+        f_qkview = "/var/tmp/" + node + "_" + today + ".qkview"
+        f_ucs = "/shared/" + node + "_" + today + ".ucs"
+        if credential['user_name'] == "root":
+            cmd_01 = "nice -19 qkview -f " + f_qkview # f5 diagnostic snapshop
+            cmd_02 = "tmsh save /sys ucs " + f_ucs # f5 backup
+        else:
+            cmd_01 = "qkview -f " + f_qkview # f5 diagnostic snapshop
+            cmd_02 = "save /sys ucs " + f_ucs # f5 backup
+        # Execute the backup commands
+        for x in [cmd_01,cmd_02]:
+            client.ssh_command(conn, x, "")
+        conn = None   # explicit closing SSH connection
+
+    ## Retrieve the files and put in under current local directory
+    print("Retrive the backup files from the F5 node ...")
+    cmd_03 = " sshpass -p " + "\"" + credential['user_pass'] + "\"" + " scp -o 'StrictHostKeyChecking no' -q " + credential['user_name'] + "@" + node + ":" + f_qkview + " ."
+    cmd_04 = " sshpass -p " + "\"" + credential['user_pass'] + "\"" + " scp -o 'StrictHostKeyChecking no' -q " + credential['user_name'] + "@" + node + ":" + f_ucs + " ."
+    cmd_05 = "ls -l " + node + "*"
+    for y in [cmd_03,cmd_04,cmd_05]:
+        print("Execute shell command: ",y)
+        os.system(y)
+
+    ## Print the reminder
+    print("""
+All done. Please check the current directory for the above files. Don't forget to:
+    a. Upload the QkView file to https://iheath.f5.com and / or
+      \'\\\\wmfile-1\\departments\\Tech Services\\F5\\QKViews\' folder;
+    b. Upload the UCS file to
+       \'\\\\wmfile-1\\departments\\Tech Services\\F5\\backups\' foler. \nBye!
+""")

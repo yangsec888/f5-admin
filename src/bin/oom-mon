@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is check F5 kernel log for potential Out-of-Memory (OMM)
+# killer action. (https://support.f5.com/csp/article/K16786)
+#
+# If there is any sign of it in action, an email alarm will be
+# sent out to IT Security team.
+#
+################################################################################
+# Version: 0.1, Date: October 17 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ oom-mon --node xxx
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 log files.
+###############################################################################
+""")
+#from client import F5Client
+import f5_admin
+from f5_admin.util import *
+import argparse
+import os
+import time
+from datetime import datetime
+from os.path import isfile, join
+# send notice over relay host
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.header import Header
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will monitor F5 OOM Killer for you. Refer to https://support.f5.com/csp/article/K16786 for details.')
+parser.add_argument('-n','--node', help='(Optional) Remote F5 hostname or IP address',required=False)
+parser.add_argument('-a','--all',help='(Optional) Exam all known F5 nodes in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-e','--email', help='Email notiification address when alarm trip',required=True)
+parser.add_argument('-r','--refresh',help='(Optional) Refresh the F5 running configuration in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+args = parser.parse_args()
+
+
+# omm killer watcher
+def mon_worker(f5_node):
+    partition_tally=0
+    with f5_admin.F5Client(credential, 7, args.verbose) as client:
+        current_time = int(time.time())
+        client.load(f5_node)
+        my_conn = client.ssh_connect()      # setup the connection
+        if client.credential["user_name"] == "root":    # root user by default have bash shell once logon
+            my_cmd = "egrep -ir 'Out of memory: Kill process' /var/log/kern.*"
+        else:
+            my_cmd = "bash -c \"egrep -ir 'Out of memory: Kill process' /var/log/kern.*\""                  # non-root user by default have tmsh once logon
+        result = client.ssh_command(my_conn,my_cmd, "")
+        #  Command execution result check
+        if result in ["",None]:
+            return result
+        elif result == []:
+            return result 
+        elif len(result[0]) > 1:
+            print("OOM killer message details: ", result)
+            notice = "F5 Node: " + client.node  + " OMM kill chain evoked: " + result[0]
+            print("Notice: ", notice)
+            send_notice(args.email, notice)
+    return result
+
+# send out email notice
+def send_notice(to_email,notice):
+    print("Sending notice to: ", to_email)
+    # build the email content
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = "F5 OOM Killer Warning @wmstools01"
+    msg['From'] = str(Header('Deploy Engineer <deploy@apps.randomhouse.com>'))
+    msg['To'] = to_email
+    mime_part = MIMEText(notice, 'plain')
+    msg.attach(mime_part)
+    # send out email
+    server=smtplib.SMTP("exrelay.us.randomhouse.com:25")
+    server.sendmail(msg['From'],msg['To'], msg.as_string())
+    server.quit()
+    print("Email sent. ")
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+
+    # simple command argument check
+    if not (args.node or args.all):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+    # watcher worker counter
+    total_chk = 0
+    if args.node:
+        mon_worker(args.node)
+        total_chk += 1
+    elif args.all:
+        with f5_admin.F5Client(credential, 7, args.verbose) as client:
+            nodes = client.get_node_list()
+            whitelist = ['ny-f5-rhwebdev1', 'ny-f5-rhwebdev2', 'wm-f5-bigiq1', 'wm-f5-toolsprd1', 'wm-f5-toolsprd2']
+            chk_nodes = [ node for node in nodes if node not in whitelist]
+        for node in chk_nodes:
+            mon_worker(node)
+            total_chk += 1
+
+    # Print the confirmation
+    print("Total number of F5 node checked: ", total_chk)
+    print("""
+All done. Bye!""")

@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to run F5 TMOS command from local workstation. This
+# will be a basic building block for the Python API.
+#
+################################################################################
+# Version: 0.3, Date: Auguest 14 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-run -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import sys
+import f5_admin
+import argparse
+from f5_admin.util import *
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will run F5 TMOS commmand for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-f','--file', help=' F5 node list in a configuration file. ',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-c','--command',help='TMOS command (default) to be remote executed. ', required=True)
+parser.add_argument('-b','--bash',help='Bash shell command to be remote executed. ', action='store_true', default=False, required=False)
+
+
+args = parser.parse_args()
+# Setup F5 connection string
+if args.password:
+    credential = set_credential_1(args.user, *args.password)
+else:
+    credential = set_credential_2(args.user)
+
+def worker(node, credential, command):
+    # Initialize a F5 instance
+    with f5_admin.F5Client(credential, 7, args.verbose) as client:
+        client.load(node)
+        print("Total Number of Top Level objects: ", len(list(client.top_objs.keys()))) # Known F5 config objects
+        my_conn = client.ssh_connect()      # setup the connection
+        if args.bash:                       # setup command prefix based on program argument and user
+            cmd_prefix =""
+        else:
+            if client.credential["user_name"] == "root":    # root user by default have bash shell once logon
+                cmd_prefix = "tmsh "
+            else:
+                cmd_prefix = ""                             # non-root user by default have tmsh once logon
+
+        my_cmd = cmd_prefix + command
+        result = client.ssh_command(my_conn,my_cmd, "")
+        my_conn.close()                                 # explicitly close the connection upon job complete
+        return result
+
+################################################################################
+#                            Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple command argument check
+    if not (args.node or args.file) and args.command:
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+
+    # Build the f5 node list
+    f5_nodes=[]
+    if args.node:
+        f5_nodes.append(args.node)
+    elif args.file:
+        f5_nodes = file_to_list(args.file)
+    # execute the command one node at a time
+    for node in f5_nodes:
+        # F5 node validation
+        if not is_valid_hostname(node):
+            print("Error - unknown hostname name:",args.node)
+            next
+        else:
+            result = worker(node, credential, args.command)
+            if len(result) > 0:                         # print out command execution stdout
+                for line in result:
+                    sys.stdout.write(line)
+
+    # Print the confirmation
+    print("""
+All done. Bye!""")

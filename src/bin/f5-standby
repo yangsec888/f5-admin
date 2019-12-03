@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to force F5 nodes into failover standby mode
+#
+################################################################################
+# Version: 0.1, Date: February 1 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-standby -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import f5_admin
+from f5_admin.util import *
+import argparse
+import getpass
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will force the F5 node into failover standy mode. ')
+parser.add_argument('-n','--node', help=' F5 hostname or IP address. ',required=False)
+parser.add_argument('-f','--file', help=' F5 node list in a configuration file. ',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box password. ',required=True)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple program argument check
+    if not args.node and not args.file:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    elif args.node and args.file:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    #else:
+        # do nothing. program proceeding
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+
+    #  Initialize a F5 instance
+    with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+        if my_f5.credential["user_name"] == "root":
+            cmd_prefix = "tmsh "
+        else:
+            cmd_prefix = ""
+        # sync to failover device group
+        cmd_standy = cmd_prefix + "run sys failover standby"
+        if args.node:
+            my_f5.load(args.node)
+            conn = my_f5.ssh_connect()
+            my_f5.ssh_command(conn,cmd_standy,"")
+            conn.close()
+        else:
+            my_nodes = file_to_list(args.file)
+            for node in my_nodes:
+                print("Force remote F5 node into standby mode: ", node)
+                my_f5.load(node)
+                conn = my_f5.ssh_connect()
+                my_f5.ssh_command(conn,cmd_standy,"")
+                conn.close()
+
+    # Print the confirmation
+    print("""All done. Bye!""")

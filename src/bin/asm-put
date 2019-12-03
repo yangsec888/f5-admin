@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this script is to publish F5 ASM XML policies .
+#
+################################################################################
+# Version: 0.5, Date:  December 20 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ asm-put -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 box.
+###############################################################################
+""")
+import f5_admin
+import argparse
+import os
+import sys
+from f5_admin.util import *
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will publish F5 ASM XML policy for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=True)
+parser.add_argument('-f','--file', help='F5 ASM policy file in the xml format',required=True)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+args = parser.parse_args()
+
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+    # Evaluate the policy file
+    if not os.path.isfile(args.file):
+        print("Please check your file path again: ",args.file)
+        sys.exit(1)
+    else:
+        if "/" in args.file:
+            f_dest = "/var/tmp/" + args.file.split("/")[-1]
+        else:
+            f_dest = "/var/tmp/" + args.file
+    # Initialize a F5 instance
+    with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
+        my_f5.load(args.node)
+        policy_name = my_f5.xml_find("policy_name",args.file)
+        print("Policy name: ", policy_name)
+        print("File path: ", f_dest)
+        # Connect to F5 box
+        ssh_f5 = my_f5.ssh_connect()
+        cmd_01 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.file + " root@" + args.node + ":" + f_dest
+        print("Execute shell command: ", cmd_01)
+        os.system(cmd_01)
+        cmd_02 = "tmsh load asm policy " + policy_name + " overwrite file " + f_dest
+        cmd_03 = "tmsh modify asm policy " + policy_name + " active"
+        cmd_04 = "rm -rf " + f_dest
+        cmd_05 = "tmsh save /sys config partitions all"
+        cmd_06 = "tmsh run /cm config-sync to-group device-group-failover"
+        cmd_07 = "tmsh publish policy " + policy_name
+        # reload and apply the policy update
+        for x in [cmd_02,cmd_03, cmd_07, cmd_04, cmd_05, cmd_06]:
+            out = my_f5.ssh_command(ssh_f5, x, "")
+        # close the open SSH connections
+        ssh_f5.close()
+    # Print the confirmation
+    #print "Program output is: "
+    print("""
+All done. Bye!""")

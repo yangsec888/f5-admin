@@ -1,0 +1,144 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to pull F5 data group configuration.
+#
+################################################################################
+# Version: 0.3, Date: December 11 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ dg-get --node xxx --[int|ext] --show [data group name]
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+#from client import F5DataGroup
+import f5_admin
+from f5_admin.util import *
+import argparse
+import shutil
+from os import listdir
+from os.path import isfile, isdir, join
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will retrieve F5 data group information for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-r','--refresh',help='(Optional) Refresh the F5 data group configuration in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-l','--list',help='(Optional) List of available F5 data groups. ', action='store_true', default=False,required=False)
+parser.add_argument('-int','--internal',help='(Optional) Print out known internal data group objects. ', action='store_true', default=False, required=False)
+parser.add_argument('-ext','--external',help='(Optional) Print out known external data group objects. ', action='store_true', default=False, required=False)
+parser.add_argument('-s','--show', help='(Optional) Print out external data group file content. ',required=False)
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple command argument check
+    if not (args.node or args.list or args.refresh):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+    # Optional: list of current F5 cache file
+    if args.list:
+        print("Available F5 data groups: ")
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as client:
+            if args.node:
+                client.load(args.node)
+                print("\nExternal Data Group: ")
+                for f in client.dgs['ext']:
+                    print(f)
+                print("\nInternal Data Group: ")
+                for g in client.dgs['int']:
+                    print(g)
+            else:
+                f5_nodes = client.get_node_list()
+                for node in f5_nodes:
+                    print(node)
+        exit(0)
+    # Refresh the external data group
+    if args.refresh:
+        print("Refresh F5 data groups: ")
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as client:
+            if args.node:
+                client.load(args.node)
+                client.fetch()
+                client.load(args.node)  # reload
+            else:
+                print("Missing command argument --node ")
+                exit(1)
+            # Retrieve external data group files
+            for x in list(client.ext_dg_objs.keys()):
+                dg_name = x.strip().split(" ")[-1]
+                dg_file_name = client.search_dg_file_name(client.ext_dg_objs[x])
+                cache_dg_file = client.cache_dg_dir + dg_name + ".txt"
+                print("Retrieve the external data group file: ", x)
+                client.fetch_ext_dg(dg_file_name,cache_dg_file)
+        exit(0)
+    # print out internal data group objects
+    if args.internal:
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as client:
+            client.load(args.node)
+            dgs = [ f.strip().split(' ')[-1] for f in list(client.int_dg_objs.keys())]
+            print("\nFound internal data group: ") #,dgs
+            print("Total Number of Internal Data Group objects: ", len(list(client.int_dg_objs.keys())), "\n")
+            #print "Detail Internal Data Group Object Configurations: "
+            for key in sorted(client.int_dg_objs.keys()):
+                #client.print_obj(key,client.int_dg_objs[key])
+                print(key)
+    # print out external data group objects
+    if args.external:
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as client:
+            client.load(args.node)
+            dgs = [ f.strip().split(' ')[-1] for f in list(client.ext_dg_objs.keys())]
+            print("\nFound external data group: ") #,dgs
+            print("Total Number of External Data Group objects: ", len(list(client.ext_dg_objs.keys())), "\n")
+            #print "Detail External Data Group Object Configurations: "
+            for key in sorted(client.ext_dg_objs.keys()):
+                print(key)
+            #    client.print_obj(key,client.ext_dg_objs[key])
+            #print "\nOur external data group data structure:\n", client.dgs
+    # print out known external data group objects
+    if args.show:
+        if args.internal:
+            print("Can not combine the 'show' switch with 'internal' switch. For external data group inspection only. ")
+            exit(1)
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as client:
+            client.load(args.node)
+            found_ext = False
+            for f in list(client.ext_dg_objs.keys()):     #search external dg list first
+                if args.show in f:
+                    dg_val=client.ext_dg_objs[f]
+                    found_ext = True
+                    break
+            if not found_ext:                       # search internal dg list secondary
+                for f in list(client.int_dg_objs.keys()):
+                    if args.show in f:
+                        dg_val=client.int_dg_objs[f]
+                        break
+                print("Internal data group content: ")
+                client.print_obj(f,dg_val)
+                exit(0)
+            elif dg_val:
+                my_dgs=client.dgs
+                print("External data group file name: ", client.search_dg_file_name(dg_val))
+                print("External data group type: ", client.search_dg_type(dg_val))
+                print("External data group content: ")
+                client.print_ext_dg(args.show)
+            else:
+                print("Unknown data group name: ", args.show)
+                exit(1)
+
+    # Print the confirmation
+    print("""
+All done. Bye!""")

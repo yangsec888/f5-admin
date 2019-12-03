@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# Given the F5 configuration object name, the program will resolve all dependency.
+# Then it will print out the configuration details.
+# Note:
+# This program might depend on 'f5-get', 'f5-search' etc.. for object name lookup
+#
+################################################################################
+# Version: 0.1, Date: October 25 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-resolve --f5-object xxx
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+#from client import F5Client
+import f5_admin
+from f5_admin.util import *
+import argparse
+import shutil
+import os
+from os import listdir
+from os.path import isfile, isdir, join
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will retrieve F5 running configuration for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=True)
+parser.add_argument('-j','--object', help='F5 configuration object name. ',required=True)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box logon password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+    # Initialize a F5 instance
+    with f5_admin.F5DepTree(credential, 7, args.verbose) as client:
+        client.load(args.node)
+        print("Total Number of Top Level objects: ", len(list(client.top_objs.keys())), "\n")
+        # Check if the f5 object is known. If yes then resolve it in the F5 Dependency Tree
+        if args.object.strip() in list(client.top_objs.keys()):
+            my_objs_names = [args.object.strip()] + client.dep_resolve(args.object.strip())
+            my_objs = {key:client.top_objs[key] for key in my_objs_names}
+            print("Found total number of dependendant objects: ", len(my_objs)-1)
+        else:
+            print("F5 Object name error - non-exist object: ", args.object)
+
+    # print out the F5 configuration object with its dependencies
+    for key in my_objs.keys():
+        client.print_obj(key,my_objs[key])
+
+    # Print the final confirmation
+    print("""
+All done. Bye!""")

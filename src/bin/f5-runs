@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to run batch file with multiple F5 TMOS commands
+# from local workstation. This will be a basic building block for the Python API.
+#
+################################################################################
+# Version: 0.3, Date: September 22 2019
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-runs -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import subprocess
+import sys
+import argparse
+import f5_admin
+from f5_admin.util import *
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will run F5 TMOS commmand sets for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-f','--file', help='Local file with F5 TMOS command sets to be exected; one command per line',required=True)
+parser.add_argument('-l','--list', help='Local file with F5 host list; one host per line',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID; Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+
+args = parser.parse_args()
+# Setup F5 connection string
+if args.password:
+    credential = set_credential_1(args.user, *args.password)
+else:
+    credential = set_credential_2(args.user)
+
+# Generate a local bash script based on user input (tmsh batch file)
+def create_bash_script(input_file,output_file='/tmp/.my_bash.sh'):
+    cmd_set = file_to_list(input_file)
+    cmd_set = [ line if "tmsh " in line else "tmsh "+line for line in cmd_set ]
+    with open(output_file,"w") as f:
+        f.write("#!/bin/bash\n")
+        f.write("# custom f5 bash script created by f5-admin python package\n")
+        for line in cmd_set:
+            f.write(line+"\n")
+    f.close()
+
+# Worker process:
+def worker(node, credential):
+    # Step #1 - Create then place the bash script into the F5 box under: /var/tmp/.my_bash.sh
+    create_bash_script(args.file)
+    f_dest = '/var/tmp/.my_bash.sh'
+    cmd_01 = "sshpass -p " + "\"" + credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + " /tmp/.my_bash.sh " + credential["user_name"] + "@" + node + ":" + f_dest
+    try:
+        output = subprocess.check_output(cmd_01, shell=True, stderr=subprocess.STDOUT)
+        exec_script = "bash -c 'sh " + f_dest + "'"
+        # Step #2 - Initialize a F5 instance then execute the bash script in the remote F5 node
+        with f5_admin.F5Client(credential, 7, args.verbose) as client:
+            client.load(node)
+            print("Total Number of Top Level objects: ", len(list(client.top_objs.keys()))) # Known F5 config objects
+            my_conn = client.ssh_connect()                          # setup the SSH connection
+            result = client.ssh_command(my_conn,exec_script, "")    # Execute the custom bash script
+            my_conn.close()                                         # explicitly close the connection upon job complete
+        return result
+    except subprocess.CalledProcessError:
+        print('Execution of "%s" failed!\n' % cmd_01)
+        sys.exit(1)
+
+################################################################################
+#                            Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple command argument check
+    if not (args.node or args.list) and args.file:
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+
+    # Build the f5 node list
+    f5_nodes=[]
+    if args.node:
+        f5_nodes.append(args.node)
+    elif args.list:
+        f5_nodes = file_to_list(args.list)
+    # execute the command one F5 node at a time
+    for node in f5_nodes:
+        # F5 node validation
+        if not is_valid_hostname(node):
+            print("Error - unknown hostname name:",args.node)
+            next
+        else:
+            result = worker(node, credential)
+            if len(result) > 0:                         # print out command execution stdout
+                for line in result:
+                    sys.stdout.write(line)
+
+    # Print out the program exit confirmation
+    print("""
+All done. Bye!""")

@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this script is to patch the remote F5 external data group,
+#   by restoring it with modified plaintext file.
+#
+################################################################################
+# Version: 0.1, Date: September 13 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ dg-put --node xxx --file abc
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import f5_admin
+from f5_admin.util import *
+from os import listdir
+from os.path import isfile, isdir, join
+import argparse
+import getpass
+import sys
+import os
+import re
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will patch the running configuration. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-l','--list',help='(Optional) List of available F5 local cache directory. ', action='store_true', default=False,required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-f','--file',help='File path to the data group patch file in the local file system. ', required=False)
+parser.add_argument('-d','--data_type',help='F5 external data group type default to string: [integer|ip|string]. ', required=False)
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple program argument check
+    if not args.node and not args.list:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    elif args.node and args.list:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+    # Optional: list of current F5 cache file
+    if args.list:
+        print("F5 node available cache directory: ")
+        with f5_admin.F5DataGroup(credential, 7, args.verbose) as my_f5:
+            if args.node:
+                cache_dir = my_f5.cache_dg_dir + "/" + args.node.strip() + "/"
+                cache_files = [f for f in listdir(cache_dir) if isfile(join(cache_dir, f))]
+                for f in cache_files:
+                    print(f)
+            else:
+                cache_dirs = [d for d in listdir(my_f5.cache_config_base) if isdir(join(my_f5.cache_config_base, d))]
+                for d in cache_dirs:
+                    print(d)
+        exit(0)
+    #  Initialize a F5 instance
+    with f5_admin.F5DataGroup(credential, 7, args.verbose) as my_f5:
+        node = args.node
+        print("\nPatching F5 node: ",node, "...","\n")
+        my_f5.load(node)
+        # Step 2: Evaluate the local patch file - upload a copy to F5 if exist
+        if not is_file(args.file):
+            print("Please check your file path again: ",args.file)
+            sys.exit(1)
+        else:
+            if "/" in args.file:            # get rid of the folder if any
+                dg = args.file.split("/")[-1]
+            else:
+                dg= args.file
+            if ".txt" in dg:                # get rid of the suffix ".txt" if any
+                dg = dg.replace(".txt","")
+            if "." in dg:                   # get rid of suffix ".01192019" etc..
+                dg=re.sub(r"\.\d+","",dg)
+            f_dest = "/var/tmp/" + dg
+        cmd_01 = "sshpass -p " + "\"" + my_f5.credential["user_pass"] + "\"" + " scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q " + args.file + " root@" + node + ":" + f_dest
+        if args.data_type:
+            cmd_02 = 'tmsh create /sys file data-group ' + dg + ' separator ' + '":="' + ' source-path file:' + f_dest + ' type ' + args.data_type
+        else:
+            cmd_02 = 'tmsh create /sys file data-group ' + dg + ' separator ' + '":="' + ' source-path file:' + f_dest + ' type string'
+        cmd_03 = "tmsh modify /sys file data-group " + dg + " source-path file:" + f_dest
+        cmd_04 = "tmsh create /ltm data-group external " + dg + " external-file-name " + dg
+        cmd_05 = "tmsh save /sys config partitions all"
+        cmd_06 = "tmsh run /cm config-sync to-group device-group-failover"
+        cmd_08 = "rm -rf " + f_dest
+        print("Execute shell command: ", cmd_01)
+        os.system(cmd_01)
+        conn = my_f5.ssh_connect()
+        if dg in my_f5.dgs['ext']:
+            for x in [cmd_03,cmd_05,cmd_06,cmd_08]:
+                out = my_f5.ssh_command(conn, x, "")
+                if len(out) > 0:
+                    print("Here is the command execution result: ")
+                    for z in out:
+                        print(z)
+        else:
+            for y in[cmd_02,cmd_04,cmd_05,cmd_08]:
+                out = my_f5.ssh_command(conn,y,"")
+                if len(out) > 0:
+                    print("Here is the command execution result: ")
+                    for z in out:
+                        print(z)
+        conn.close()
+    # Step 5: Print the confirmation
+    print("""
+All done. Bye!""")

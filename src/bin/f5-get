@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to pull F5 running configuration. Then extract
+# the interesting object definition for you.
+#
+################################################################################
+# Version: 0.6, Date: September 03 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ f5-get --node xxx --filter1 abc --filter2 defg
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+#from client import F5Client
+import f5_admin
+from f5_admin.util import *
+import argparse
+import shutil
+import os
+from os import listdir
+from os.path import isfile, isdir, join
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will retrieve F5 running configuration for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box logon password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-r','--refresh',help='(Optional) Refresh the F5 running configuration in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-l','--list',help='(Optional) List of available F5 configuration files under the local cache directory. ', action='store_true', default=False,required=False)
+parser.add_argument('-d','--delete',help='(Optional) Delete F5 cache configuration files and the cache directory. ', required=False)
+parser.add_argument('-f1','--filter1',help='(Optional) Simple string filter to narrow down the configuration objects. ', required=False)
+parser.add_argument('-f2','--filter2',help='(Optional) Additional string filter to further narrow down the configuration objects. ', required=False)
+
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+
+    # simple command argument check
+    if not (args.node or args.list or args.delete):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+    # Optional: list of current F5 cache file
+    if args.list:
+        print("F5 running configuration file under the cache directory: ")
+        with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+            if args.node:
+                my_f5.load(args.node)
+                cache_files = my_f5.get_cache_file_list()
+                for f in cache_files:
+                    print(f)
+                print("\nTotal F5 cache files: ", len(cache_files))
+            else:
+                nodes = my_f5.get_node_list()
+                for d in nodes:
+                    print(d)
+                print("\nTotal F5 cache nodes: ", len(nodes))
+        exit(0)
+
+    # Optional: list of current F5 cache file
+    if args.delete:
+        print("Delete F5 running configuration file and cache directory: ")
+        with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+            target_dir = join(my_f5.cache_config_base, args.delete)
+            if isdir(target_dir):
+                confirmation = input("Are you sure to delete file: "+ args.delete + " (Y|N)?")
+                if confirmation.upper() == "Y":
+                    shutil.rmtree(target_dir)
+                    print(target_dir, "is deleted. ")
+                else:
+                    print("Skip delete operation ...")
+            else:
+                print("Can't find the F5 configuration: ", args.delete)
+        exit(0)
+
+    # Initialize a F5 instance
+    with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+        my_f5.load(args.node)
+        print("Total Number of Top Level objects: ", len(list(my_f5.top_objs.keys())), "\n")
+
+        # (optional) Refetch the running configuration
+        if args.refresh:
+            my_f5.fetch()
+            exit(1)
+
+        # (optional) if filter switches is on, filter the F5 top object list
+        if args.filter1:
+            my_objs = my_f5.filter_f5_objs(my_f5.top_objs, args.filter1)
+            if args.filter2:
+                clean_objs = my_f5.filter_f5_objs(my_objs,args.filter2)
+            else:
+                clean_objs = my_objs
+            print("Found Total Number of Filtered objects: ", len(list(clean_objs.keys())))
+        else:
+            clean_objs = my_f5.top_objs
+
+    # print out the F5 configuration object
+    for key in sorted(clean_objs.keys()):
+        my_f5.print_obj(key,clean_objs[key])
+
+    # Print the confirmation
+    print("""
+All done. Bye!""")

@@ -1,0 +1,23 @@
+*.DS_Store
+*.pyc
+*.bak
+*.zip
+
+# no configuration data
+/src/conf/
+/src/old_conf/
+/src/inc/
+/src/inc/*
+/conf/
+/old_conf/
+/venv/
+/f5_admin.egg-info/
+
+# no distribution packages
+/dist/
+/build/
+/f5.egg-info/
+/node_modules/
+
+# no custom build script
+rebuild.sh

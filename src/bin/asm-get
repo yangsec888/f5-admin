@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to retrieve F5 ASM policy in the XML format.
+#
+################################################################################
+# Version: 0.4, Date:  August 31 2018
+# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Usage:
+#         $ asm-get -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 box.
+###############################################################################
+""")
+import f5_admin
+import argparse
+import os
+import sys
+import datetime
+import xmltodict
+from os import listdir
+from os.path import isfile, join
+from f5_admin.util import *
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will retrieve F5 ASM XML policy for you. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=True)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-s','--show', help='(Optional) Parse ASM XML policy file into plain txt structure',required=False)
+parser.add_argument('-l','--list', help='(Optional) List of known ASM XML files',action='store_true', default=False,required=False)
+parser.add_argument('-r','--refresh',help='(Optional) Refresh the ASM policy XML files in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    today = datetime.date.today().strftime('%m%d%Y')
+    # simple command argument check
+    if not (args.node or args.list or args.parse):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+    # Optional: list of current F5 cache file
+    if args.list:
+        print("A list of F5 ASM XML policy file under the cache directory: ")
+        with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
+            my_f5.load(args.node)
+            cache_dirs = [f for f in listdir(my_f5.cache_asm_dir) if isfile(join(my_f5.cache_asm_dir, f))]
+            for f in cache_dirs:
+                print(f)
+        exit(1)
+
+    # Optional, parse ASM xml policy file into plain txt
+    with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
+        my_f5.load(args.node)
+
+        # (optional) Refetch the running configuration
+        if args.refresh:
+            for x in my_f5.asm_list:
+                my_f5.fetch_asm_policy(x)
+            exit(0)
+
+        if args.show:
+            if isfile(args.show):
+                file = args.show
+            elif isfile(join(my_f5.cache_asm_dir, args.show)):
+                file = join(my_f5.cache_asm_dir, args.show)
+            else:
+                print("Error file can not be found: ", args.show)
+                exit(1)
+            policy_txt = my_f5.parse_asm_policy(file)
+            for item in policy_txt:
+                print(item)
+
+        #    with open(file) as fd:
+        #        doc = xmltodict.parse(fd.read())
+        #    print "Print out the ASM policy contents in key value pair below: "
+        #    for path,value in my_f5.traverse(doc,prev_path = file.split('.')[0]):
+        #        print("{}: {}".format(path,value))
+            exit(0)
+
+    # Step 7: Print the confirmation
+    #print "Program output is: "
+    print("""
+All done. Bye!""")
