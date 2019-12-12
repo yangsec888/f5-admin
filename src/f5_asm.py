@@ -5,7 +5,7 @@
 #
 ################################################################################
 #
-# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Author: Sam Li, sli@randompenguinhouse.com, x829485
 #
 ################################################################################
 
@@ -64,7 +64,10 @@ class F5Asm(F5Client):
         self.asms={}
         for x in list(self.asm_objs.keys()):
             asm_name = x.strip().split(" ")[-1]
-            cache_asm_file = self.cache_asm_dir + asm_name + ".xml"
+            cache_asm_obj_dir = self.cache_asm_dir + asm_name + "/"
+            if not is_directory(cache_asm_obj_dir):
+                mkdir(cache_asm_obj_dir)
+            cache_asm_file = cache_asm_obj_dir + asm_name + ".xml"
             if not is_file(cache_asm_file):
                 print("Retrieve the asm policy file: ", asm_name)
                 self.fetch_asm_policy(asm_name)
@@ -80,10 +83,13 @@ class F5Asm(F5Client):
             print("Fetch the ASM policy on: ",self.node)
             conn = self.ssh_connect()
             today = datetime.date.today().strftime('%m%d%Y')
-            cache_asm_file = self.cache_asm_dir + asm_name + ".xml"
+            cache_asm_obj_dir = self.cache_asm_dir + asm_name + "/"
+            if not is_directory(cache_asm_obj_dir):
+                mkdir(cache_asm_obj_dir)
+            cache_asm_file = cache_asm_obj_dir + asm_name + ".xml"
             policy_file_name = asm_name + "_" + today + ".xml"
             remote_file = "/var/tmp/" + policy_file_name
-            local_file = self.cache_asm_dir + policy_file_name
+            local_file = cache_asm_obj_dir + policy_file_name
             cmd_01 = "rm -rf " + remote_file
             cmd_02 = "tmsh save asm policy " + asm_name + " xml-file " + remote_file
             for cmd in [cmd_01,cmd_02]:
