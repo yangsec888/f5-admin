@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2019  Sam Li <sli@penguinrandomhouse.com>
+# Copyright (C) 2018-2019  Sam Li <yangsec888@gmail.com>
 # This file is part of f5 secure admin API in Python
 
 import sys
@@ -14,7 +14,7 @@ with open("LICENSE.txt", "r") as fh:
 #)
 
 __license__ = lic
-__author__ = "Sam Li, yangsec888@gmail.com, x917.667.1972"
+__author__ = "Sam Li, yangsec888@gmail.com, x.x.1972"
 __version__ = "1.1.6"
 
 #__all__ = [

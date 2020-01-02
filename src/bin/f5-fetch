@@ -6,7 +6,7 @@ print("""
 #  into the local cache directory.
 ################################################################################
 # Version: 0.2, Date: Nov 10 2018
-# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Author: Sam Li, yangsec888@gmail.com, x.x.1972
 # Usage:
 #         $ f5-fetch -h
 ###############################################################################

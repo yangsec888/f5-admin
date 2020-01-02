@@ -6,7 +6,7 @@ print("""
 #
 ################################################################################
 # Version: 0.3, Date: December 11 2018
-# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Author: Sam Li, yangsec888@gmail.com, x.x.1972
 # Usage:
 #         $ dg-get --node xxx --[int|ext] --show [data group name]
 ###############################################################################

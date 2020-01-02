@@ -8,7 +8,7 @@ print("""
 #    b. Missing ip-intelligence-policy
 ################################################################################
 # Version: 0.1, Date: August 23 2018
-# Author: Sam Li, yangsec888@gmail.com, x917.667.1972
+# Author: Sam Li, yangsec888@gmail.com, x.x.1972
 # Usage:
 #         $ gap-vip --node xxx
 ###############################################################################
