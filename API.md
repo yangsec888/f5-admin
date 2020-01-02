@@ -44,6 +44,7 @@ PACKAGE CONTENTS
     f5_asm
     f5_client
     f5_data_group
+    f5_dep_tree
     util
 
 CLASSES
@@ -62,13 +63,13 @@ You can also download the [API HTML Document](/html.zip). Unzip it under your lo
 Eventually you might also want to check out the API source code under the ['src' directory](/src).
 
 # Build Your Own  
-The 'f5_client' class provides the hook for you to access the remote F5 box. Then you can perform your Python fu from there. To start, you want to make sure you have Python 2.7 in your local machine. And the 'f5' package is already installed in your python environment. Refer to [README](/README.md) for installation instructions.
+The 'f5_client' class provides the hook for you to access the remote F5 box. Then you can perform your Python fu from there. To start, you want to make sure you have Python 3 in your local machine. And the 'f5' package is already installed in your python environment. Refer to [README](/README.md) for installation instructions.
 
 ```bash
 $ python -V
-Python 2.7.10
+Python 3.7.5
 $ pip list | grep f5
-f5                                     1.0.0 or current version
+f5                                     1.1.6 or current version
 ```
 
 ## My First F5 Tool
