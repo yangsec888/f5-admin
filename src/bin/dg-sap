@@ -4,9 +4,9 @@ print("""
 ################################################################################
 #  Given the desirable external WDSL enpoint, the internal WDSL endpoint, and
 #  the internal endpoint, this program will generate the data group entries for
-#  the F5 Proxy-pass setup in PRH.
+#  the F5 Proxy-pass setup in production.
 #
-#  Please refer to PRH IT Security Evernote
+#  Please refer to production documents
 #  'F5 SAP PI Endpoint Proxy Setup Procedures' for more details
 #
 ################################################################################

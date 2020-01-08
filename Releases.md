@@ -54,8 +54,8 @@ Implement F5 Configuration Object Dependency Tree Resolving Algorithm in class [
 ### Release 1.0.9
 - Additional features are added over minor releases between 1.0.0 and 1.0.9
 - cert-chk:   The utility to check local F5 cache configuration files for any expiring client ssl cert in the next 30 days.
-- dg-sap:   Custom automation utility to setup SAP PI Endpoint Proxy in PRH environment.
-- f5-setup-bacup: Custom automation utility to setup F5 node to be backed daily in PRH environment.
+- dg-sap:   Custom automation utility to setup SAP PI Endpoint Proxy in production environment.
+- f5-setup-bacup: Custom automation utility to setup F5 node to be backed daily in production environment.
 - f5-install-cert: Custom automation utility to install new certs in the F5 nodes.
 - f5-sync:  Custom automation utility to sync F5 node to 'device-group-failover' object in the running configuration.
 

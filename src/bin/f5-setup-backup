@@ -6,16 +6,16 @@ print("""
 # upgrade or a new installation, as the previous installed backup process may
 # be wiped out during the upgrade / installation.
 #
-#    Refer to Evernotes "F5 Backup Notes" for furhter details
+#    Refer to Box Note "F5 Backup Procedures" for further details
 #
 ################################################################################
 # Version: 0.1, Date: June 19 2018
-# Author: Sam Li, yangsec888@gmail.com, x.x.1972
+# Author: Sam Li, yangsec888@gmail.com, x.1972
 # Usage:
-#         $ setup-f5-backup
+#         $ f5-setup-backup
 ###############################################################################
 # Prerequisite:
-# a. You have sufficient AD access (sudo) to backup file server 'wmarchive01'.
+# a. You have sufficient AD access (sudo) to backup file server 'xxx'.
 # b. You have privileged access to F5 box.
 ###############################################################################
 """)
@@ -28,7 +28,7 @@ import paramiko  # library to establish ssh connection
 verbose = False
 # simple program argument check
 if len(sys.argv) > 1:
-    print("Usage: python setup-f5-backup.py")
+    print("Usage: python f5-setup-backup.py")
     sys.exit(1)
 
 # simple legal disclaimer
@@ -54,8 +54,8 @@ f5_connection = {
 
 # setup backup server connection string
 backup_connection = {
-    "host_name": "wmarchive01.us.mask.com",
-    "user_name": input("Establish connection to backup server wmarchive01. Please enter your AD user ID: "),
+    "host_name": "xxx.us.xxx.com",
+    "user_name": input("Establish connection to backup server xxx. Please enter your AD user ID: "),
     #"user_key": "/Users/sli/.ssh/id_rsa.pub",
     "user_pass": getpass.getpass("Please enter your AD password: ")
 }
