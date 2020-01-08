@@ -22,7 +22,7 @@ class TestF5Client(unittest.TestCase):
         pass
 
     def test_load(self):
-        self.assertEqual(getsize(self.client.cache_config),211291)
+        self.assertEqual(getsize(self.client.cache_config),211258)
         self.assertEqual(len(list(self.client.top_objs.keys())), 255)
 
     def test_filter_f5_objs(self):

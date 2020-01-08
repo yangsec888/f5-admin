@@ -77,7 +77,7 @@ Copy the following code block in a text editor. Then save it into a file name 't
 ```python
 # !/usr/bin/env python              # Let's build a tool together
 import f5_admin                     # First we need to let Python know we're going to use the API
-f5_node = "wm-f5-rhwebdev1"         # The F5 node we want to connect to.
+f5_node = "xx-rhwebdev1"         # The F5 node we want to connect to.
 f5_command = "show sys software"    # The F5 command we want to run
 with f5_admin.F5Client(None,None,None) as client:
    client.load(f5_node)             # Now we're ready to open a remote connection
@@ -92,9 +92,9 @@ with f5_admin.F5Client(None,None,None) as client:
 Run the 'test' utility in Python. Enter your F5 credential at the prompt. Here is what you will see:
 ```bash
 $ python test.py
-Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.0-py2.7.egg/f5_admin/conf/wm-f5-rhwebdev1/wm-f5-rhwebdev1.txt
+Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.0-py2.7.egg/f5_admin/conf/xx-rhwebdev1/xx-rhwebdev1.txt
 Loading complete
-Setting up remote SSH session to host: wm-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Please enter the F5 user name:
 Please enter the F5 password:
 Execution on the remote SSH host:  show sys software
@@ -122,12 +122,12 @@ In the real world you want the tool to be both reliable and user friendly as pos
 The improved tool can be found as [f5-run](/src/bin/f5-run) within this package. If you have the package installed already, you can run it like below:
 
 ```bash
-$ f5-run -n ny-f5-rhwebdev1 -p $F5Pass -c "show sys software"
+$ f5-run -n xx-rhwebdev1 -p $F5Pass -c "show sys software"
 ...
-Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.0-py2.7.egg/f5_admin/conf/ny-f5-rhwebdev1/ny-f5-rhwebdev1.txt
+Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.0-py2.7.egg/f5_admin/conf/xx-rhwebdev1/xx-rhwebdev1.txt
 Loading complete
 Total Number of Top Level objects:  267
-Setting up remote SSH session to host: ny-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Execution on the remote SSH host:  tmsh show sys software
 Command execution complete.
 ...

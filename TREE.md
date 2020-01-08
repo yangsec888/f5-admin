@@ -45,7 +45,7 @@ Assuming you have this python package installed, and have the access to the F5 c
 ```python
 # !/usr/bin/env python              # F5DepTree Test Example
 import f5_admin                     # First we need to let Python know we're going to use the API
-f5_node = "wm-f5-dl4prd1"           # The F5 node we want to connect to.
+f5_node = "xx-dl4prd1"           # The F5 node we want to connect to.
 with f5_admin.F5DepTree(None,None,None) as client:
     client.load(f5_node)
     conf_obj_name = "ltm virtual Forward_App_Servers"
@@ -57,9 +57,9 @@ Then you should be able to run the following code to resolve the configuration d
 
 ```bash
 $ python src/bin/test3.py
-Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin/conf/wm-f5-dl4prd1/wm-f5-dl4prd1.txt
+Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin/conf/xx-dl4prd1/xx-dl4prd1.txt
 Loading complete
-Resolving configuration dependency on  wm-f5-dl4prd1 for object: ltm virtual Forward_App_Servers
+Resolving configuration dependency on  xx-dl4prd1 for object: ltm virtual Forward_App_Servers
 ['security log profile splunk-logging_local', 'security log profile splunk-logging', 'ltm profile fastl4 ftps_fastL4', 'net vlan DL4-prd-int-vlan752']
 ```
 

@@ -146,11 +146,11 @@ cm cert dtdi.crt {
     revision 5
     serial-number 112002
     size 1322
-    subject CN=ny-f5-rhwebdev1.us.mask.com
+    subject CN=xx-rhwebdev1.us.mask.com
     updated-by root
     version 3
 }
-cm device ny-f5-rhwebdev1.us.mask.com {
+cm device xx-rhwebdev1.us.mask.com {
     active-modules { "ASM, Unlimited, VIPRION|LNKNSTP-CCQHFRH" "Best Bundle, C2200 / C2400 Platforms|OGCXKCC-KJDWXRX|SDN Services|Acceleration Manager, C2400|DNS (Unlimited), VIPRION|APM, Base, C2400|AFM, C2400|ASM, Unlimited, VIPRION|Anti-Virus Checks|Base Endpoint Security Checks|Firewall Checks|Network Access|Secure Virtual Keyboard|APM, Web Application|Machine Certificate Checks|Protected Workspace|Compression, Unlimited|Remote Desktop|App Tunnel|GTM Licensed Objects, Unlimited|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|GTM Rate Fallback, (UNLIMITED)|DNS Rate Limit, Unlimited QPS|GTM Rate, Unlimited|SSL, Unlimited, C2400/C4400/C4480|CGN, VIPRION, AFM ONLY|Routing Bundle|PSM|Acceleration Manager, Ltd to Full Upgrade" "GTM|IBQBYMQ-QBUEQYD|STP|GTM, DNS LB|GTM Licensed Objects, Unlimited|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|GTM Rate Fallback, (UNLIMITED)|DNS Rate Limit, Unlimited QPS|GTM Rate, Unlimited" "LTM, Base, C2400|DFEKXAY-UQWVMGS|IPV6 Gateway|Rate Shaping|Ram Cache|50 MBPS COMPRESSION|APM, Limited, Viprion|SSL, 500 TPS Per Core|Cluster Multi-Processing|Anti-Virus Checks|Base Endpoint Security Checks|Firewall Checks|Network Access|Secure Virtual Keyboard|APM, Web Application|Machine Certificate Checks|Protected Workspace|Compression, Unlimited|Remote Desktop|App Tunnel|SSL, Unlimited, C2400/C4400/C4480|CGN, VIPRION, AFM ONLY|Routing Bundle|PSM|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|DNS Rate Limit, Unlimited QPS|Acceleration Manager, Ltd to Full Upgrade|SSL, C2200/C2400|AAM, Core" "VCMP Enabled, C2400|QICMGYG-QWVRHRT" }
     base-mac 00:23:e9:4b:db:49
     build 0.0.3
@@ -161,7 +161,7 @@ cm device ny-f5-rhwebdev1.us.mask.com {
     description "Web Development  F5"
     edition "Point Release 6"
     failover-state active
-    hostname ny-f5-rhwebdev1.us.mask.com
+    hostname xx-rhwebdev1.us.mask.com
     key dtdi.key
     location "New York, NY"
     management-ip xx.xx.xx.1
@@ -174,17 +174,17 @@ cm device ny-f5-rhwebdev1.us.mask.com {
     time-zone America/New_York
     version 12.1.3.6
 }
-cm device-group datasync-device-ny-f5-rhwebdev1.us.mask.com-dg {
+cm device-group datasync-device-xx-rhwebdev1.us.mask.com-dg {
     auto-sync enabled
     devices {
-        ny-f5-rhwebdev1.us.mask.com { }
+        xx-rhwebdev1.us.mask.com { }
     }
     full-load-on-sync true
     network-failover disabled
 }
 cm device-group datasync-global-dg {
     devices {
-        ny-f5-rhwebdev1.us.mask.com { }
+        xx-rhwebdev1.us.mask.com { }
     }
     full-load-on-sync true
     network-failover disabled
@@ -192,7 +192,7 @@ cm device-group datasync-global-dg {
 cm device-group device-group-failover {
     description "HA Group for Application Failover"
     devices {
-        ny-f5-rhwebdev1.us.mask.com { }
+        xx-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
     type sync-failover
@@ -200,13 +200,13 @@ cm device-group device-group-failover {
 cm device-group device_trust_group {
     auto-sync enabled
     devices {
-        ny-f5-rhwebdev1.us.mask.com { }
+        xx-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
 }
 cm device-group gtm {
     devices {
-        ny-f5-rhwebdev1.us.mask.com { }
+        xx-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
 }
@@ -241,7 +241,7 @@ cm traffic-group traffic-group-local-only {
 cm trust-domain Root {
     ca-cert dtca.crt
     ca-cert-bundle dtca-bundle.crt
-    ca-devices { /Common/ny-f5-rhwebdev1.us.mask.com }
+    ca-devices { /Common/xx-rhwebdev1.us.mask.com }
     ca-key dtca.key
     status standalone
     trust-group device_trust_group
@@ -6662,7 +6662,7 @@ PROSECUTION AND/OR USED BY mask mask HOUSE AS IT SEES FIT.
 
 ################################################################################"
     gui-setup disabled
-    hostname ny-f5-rhwebdev1.us.mask.com
+    hostname xx-rhwebdev1.us.mask.com
     remote-host {
         host1 {
             addr xx.104.8.12

@@ -54,6 +54,7 @@ Please refer to [API](/API.md), for complete information on how to use this API.
 [Unit tests](/tests) are written to ensure the quality of the code. It provides the assurance and sustainability of the project. Use the following command to run the tests:
 
 ```bash
+$ cd f5-admin/
 $ python -m unittest discover tests/
 ```
 

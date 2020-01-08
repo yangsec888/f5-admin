@@ -113,7 +113,7 @@ if __name__ == '__main__':
     elif args.all:
         with f5_admin.F5Client(credential, 7, args.verbose) as client:
             nodes = client.get_node_list()
-            whitelist = ['ny-f5-rhwebdev1', 'ny-f5-rhwebdev2', 'wm-f5-bigiq1', 'wm-f5-toolsprd1', 'wm-f5-toolsprd2']
+            whitelist = ['xx-rhwebdev1', 'xx-rhwebdev2', 'xx-bigiq1', 'xx-toolsprd1', 'xx-toolsprd2']
             chk_nodes = [ node for node in nodes if node not in whitelist]
         for node in chk_nodes:
             sub_total = chk_worker(node)

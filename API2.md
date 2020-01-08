@@ -40,7 +40,7 @@ Copy the following code block in a text editor. Then save it into a file name 't
 ```python
 # !/usr/bin/env python              # Let's build another tool together
 import f5_admin                     # First we need to let Python know we're going to use the API
-f5_node = "wm-f5-rhwebdev1"         # The F5 node we want to connect to.
+f5_node = "xx-rhwebdev1"         # The F5 node we want to connect to.
 with f5_admin.F5Client(None,None,None) as client:
    client.load(f5_node)             # Now we're ready to open a remote connection
    f_qkview = "/var/tmp/" + f5_node + ".qkview"
@@ -56,16 +56,16 @@ with f5_admin.F5Client(None,None,None) as client:
 Run the 'test2' utility in Python. Enter your F5 credential at the prompt. Here is what you will see:
 ```bash
 $ python src/bin/test2.py
-Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.3-py2.7.egg/f5_admin/conf/wm-f5-rhwebdev1/wm-f5-rhwebdev1.txt
+Loading cache_config:  /Library/Python/2.7/site-packages/f5_admin-1.0.3-py2.7.egg/f5_admin/conf/xx-rhwebdev1/xx-rhwebdev1.txt
 Loading complete
-Setting up remote SSH session to host: wm-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Please enter the F5 user name: sli
 Please enter the F5 password:
-Execution on the remote SSH host:  qkview -f /var/tmp/wm-f5-rhwebdev1.qkview
+Execution on the remote SSH host:  qkview -f /var/tmp/xx-rhwebdev1.qkview
 Command execution complete.
 
-Setting up remote SSH session to host: wm-f5-rhwebdev1
-Execution on the remote SSH host:  save /sys ucs /shared/wm-f5-rhwebdev1.ucs
+Setting up remote SSH session to host: xx-rhwebdev1
+Execution on the remote SSH host:  save /sys ucs /shared/xx-rhwebdev1.ucs
 Command execution complete.
 ```
 
@@ -75,7 +75,7 @@ In the real world you want the tool to be both reliable and user friendly as pos
 The improved tool can be found as [f5-backup](/src/bin/f5-backup) within this package. If you have the package installed already, you can run it like below:
 
 ```bash
-$ f5-backup -n wm-f5-rhwebdev1 -p $F5Pass
+$ f5-backup -n xx-rhwebdev1 -p $F5Pass
 ...
 
 ```

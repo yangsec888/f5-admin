@@ -95,26 +95,26 @@ optional arguments:
 Fetch F5 running configuration file for the first time. It will be placed in your local file system as cache.
 
 ```bash
-$ sudo f5-fetch -n wm-f5-rhwebdev1 -u sli
+$ sudo f5-fetch -n xx-rhwebdev1 -u sli
 Password:
 ...
 
-Loading cache_config:  /Library/Python/2.7/site-packages/f5-0.0.5-py2.7.egg/f5/conf/wm-f5-rhwebdev1/wm-f5-rhwebdev1.txt
+Loading cache_config:  /Library/Python/2.7/site-packages/f5-0.0.5-py2.7.egg/f5/conf/xx-rhwebdev1/xx-rhwebdev1.txt
 Loading complete
-Fetch the running configuration on:  wm-f5-rhwebdev1
-Setting up remote SSH session to host: wm-f5-rhwebdev1
+Fetch the running configuration on:  xx-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Please enter the F5 password:
 Execution on the remote SSH host:  list
 Command execution complete.
 
-F5 running configuration is saved to file:  /Library/Python/2.7/site-packages/f5-0.0.5-py2.7.egg/f5/conf/wm-f5-rhwebdev1/wm-f5-rhwebdev1.txt
+F5 running configuration is saved to file:  /Library/Python/2.7/site-packages/f5-0.0.5-py2.7.egg/f5/conf/xx-rhwebdev1/xx-rhwebdev1.txt
 ```
 
 ## Example 2 - Filter F5 Object
 Filter out interesting F5 running configuration objects. This will be done from your command line by working on the cache file:
 
 ```bash
-$ f5-get -n ny-f5-gtmprd1 -f1 corpdir.mask.com
+$ f5-get -n xx-gtmprd1 -f1 corpdir.mask.com
 ...
 Parsing the f5 running configurations ...
 Parsing done.
@@ -129,10 +129,10 @@ gtm pool a corpdir.mask.com-int {
  fallback-mode none
  load-balancing-mode topology
  members {
- ny-f5-rhwebprd:/Common/corpdir-http-int {
+ xx-rhwebprd:/Common/corpdir-http-int {
  member-order 0
  }
- wm-f5-rhwebprd:/Common/corpdir-http-int {
+ xx-rhwebprd:/Common/corpdir-http-int {
  member-order 1
  }
  }
@@ -157,14 +157,14 @@ Note that when you exam your object definition, please make sure all references 
 It's a good idea to test the integrity of your configuration object(s), by using the F5 build-in integrity checker. A dry run example is illustrated below:
 
 ```bash
-$ f5-put -r -n ny-f5-rhwebdev1 -p MASKED -f f5/src/inc/splunk-log.inc
+$ f5-put -r -n xx-rhwebdev1 -p MASKED -f f5/src/inc/splunk-log.inc
 
 
-Execute shell command: sshpass -p MASKED scp -q f5/src/inc/splunk-log.inc root@ny-f5-rhwebdev1:/var/tmp/splunk-log.inc
+Execute shell command: sshpass -p MASKED scp -q f5/src/inc/splunk-log.inc root@xx-rhwebdev1:/var/tmp/splunk-log.inc
 Parsing the f5 running configurations ...
 Parsing done.
 
-Setting up remote SSH session to host: ny-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Execution on the remote SSH host: tmsh load sys config verify file /var/tmp/splunk-log.inc
 
 
@@ -210,15 +210,15 @@ If you see any error message from the above dry run, you might want to go back t
 ### B) Deploy After Validation
 Once the object(s) are properly verified from the above step, it'll be safe to be deployed:
 ```bash
-$ f5-put -n ny-f5-rhwebdev1 -p MASKED -f f5/src/inc/splunk-log.inc
+$ f5-put -n xx-rhwebdev1 -p MASKED -f f5/src/inc/splunk-log.inc
 
 
 
-Execute shell command: sshpass -p MASKED scp -q f5/src/inc/splunk-log.inc root@ny-f5-rhwebdev1:/var/tmp/splunk-log.inc
+Execute shell command: sshpass -p MASKED scp -q f5/src/inc/splunk-log.inc root@xx-rhwebdev1:/var/tmp/splunk-log.inc
 Parsing the f5 running configurations ...
 Parsing done.
 
-Setting up remote SSH session to host: ny-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Execution on the remote SSH host: tmsh load sys config merge file /var/tmp/splunk-log.inc
 
 
@@ -248,14 +248,14 @@ All done. Bye!
 The ASM policy file should be in the XML format, residing in your local file system. This could be the ASM policy exported from a different F5 node. Or it could be an enhance policy file being pushed back to the same F5 node.
 
 ```bash
-$ asm_put -n ny-f5-rhwebdev1 -f wordpress_template_08232018.xml
+$ asm_put -n xx-rhwebdev1 -f wordpress_template_08232018.xml
 
 ...
 Policy name:  wordpress_template
 File path:  /var/tmp/wordpress_template_08232018.xml
-Setting up remote SSH session to host: ny-f5-rhwebdev1
+Setting up remote SSH session to host: xx-rhwebdev1
 Please enter the F5 root password:
-Execute shell command:  sshpass -p MASKED scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q wordpress_template_08232018.xml root@ny-f5-rhwebdev1:/var/tmp/wordpress_template_08232018.xml
+Execute shell command:  sshpass -p MASKED scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -q wordpress_template_08232018.xml root@xx-rhwebdev1:/var/tmp/wordpress_template_08232018.xml
 Execution on the remote SSH host:  tmsh load asm policy wordpress_template overwrite file /var/tmp/wordpress_template_08232018.xml
 
 

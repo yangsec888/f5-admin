@@ -94,7 +94,7 @@ if __name__ == '__main__':
     for i in my_pool.imap_unordered(refresh, nodes):
         counter+=i
     print("Total F5 configuraton fetched: ", counter)
-    print("Please fetch wm-f5-toolsprd pair manually as it has different admin password. ")
+    print("Please fetch xx-toolsprd pair manually as it has different admin password. ")
     exit(0)
     # Print the confirmation
     print("""

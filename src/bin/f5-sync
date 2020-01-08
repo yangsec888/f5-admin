@@ -67,8 +67,8 @@ if __name__ == '__main__':
             conn.close()
         else:
             all_nodes = my_f5.get_node_list()
-            exceptions = ['aws-f5-rhwebprd1','aws-f5-rhwebprd2','wm-f5-toolsprd1', 'wm-f5-toolsprd2', 'ny-f5-lab1', 'wm-f5-vcmp-1',
-                            'wm-f5-vcmp-2', 'ny-f5-vcmp-1', 'ny-f5-vcmp-2', 'ny-f5-gtmprd1', 'wm-f5-gtmprd1']
+            exceptions = ['aws-f5-rhwebprd1','aws-f5-rhwebprd2','xx-toolsprd1', 'xx-toolsprd2', 'xx-lab1', 'xx-vcmp-1',
+                            'xx-vcmp-2', 'xx-vcmp-1', 'xx-vcmp-2', 'xx-gtmprd1', 'xx-gtmprd1']
             print("Skip these nodes as they are either not in a fail-over pair nor have the standard root password: ", exceptions)
             my_nodes = [node for node in all_nodes if node not in exceptions]
             for node in my_nodes:
