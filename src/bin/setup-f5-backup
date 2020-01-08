@@ -54,7 +54,7 @@ f5_connection = {
 
 # setup backup server connection string
 backup_connection = {
-    "host_name": "wmarchive01.us.randomhouse.com",
+    "host_name": "wmarchive01.us.mask.com",
     "user_name": input("Establish connection to backup server wmarchive01. Please enter your AD user ID: "),
     #"user_key": "/Users/sli/.ssh/id_rsa.pub",
     "user_pass": getpass.getpass("Please enter your AD password: ")

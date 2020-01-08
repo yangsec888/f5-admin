@@ -51,25 +51,25 @@ asm predefined-policy POLICY_TEMPLATE_SHAREPOINT_2007_HTTPS { }
 asm predefined-policy POLICY_TEMPLATE_SHAREPOINT_2010_HTTP { }
 asm predefined-policy POLICY_TEMPLATE_SHAREPOINT_2010_HTTPS { }
 auth ldap system-auth {
-    bind-dn "CN=MASKed, CN=Users, DC=us, DC=randomhouse, DC=com"
+    bind-dn "CN=MASKed, CN=Users, DC=us, DC=mask, DC=com"
     bind-pw $M$W5$UkmQNu0F38ezLTSpfCSB6w==
     check-roles-group enabled
     login-attribute samaccountname
-    search-base-dn "DC=us, DC=randomhouse, DC=com"
-    servers { 10.0.0.1 }
+    search-base-dn "DC=us, DC=mask, DC=com"
+    servers { xx.0.0.1 }
 }
 auth password-policy { }
 auth remote-role {
     role-info {
         F5-Administrator {
-            attribute memberOf=CN=F5-MASKed,CN=Users,DC=us,DC=randomhouse,DC=com
+            attribute memberOf=CN=F5-MASKed,CN=Users,DC=us,DC=mask,DC=com
             console tmsh
             line-order 1000
             role administrator
             user-partition All
         }
         F5-Guest {
-            attribute memberOf=CN=F5-MASKed-too,CN=Users,DC=us,DC=randomhouse,DC=com
+            attribute memberOf=CN=F5-MASKed-too,CN=Users,DC=us,DC=mask,DC=com
             line-order 1001
             role auditor
             user-partition All
@@ -146,25 +146,25 @@ cm cert dtdi.crt {
     revision 5
     serial-number 112002
     size 1322
-    subject CN=ny-f5-rhwebdev1.us.randomhouse.com
+    subject CN=ny-f5-rhwebdev1.us.mask.com
     updated-by root
     version 3
 }
-cm device ny-f5-rhwebdev1.us.randomhouse.com {
+cm device ny-f5-rhwebdev1.us.mask.com {
     active-modules { "ASM, Unlimited, VIPRION|LNKNSTP-CCQHFRH" "Best Bundle, C2200 / C2400 Platforms|OGCXKCC-KJDWXRX|SDN Services|Acceleration Manager, C2400|DNS (Unlimited), VIPRION|APM, Base, C2400|AFM, C2400|ASM, Unlimited, VIPRION|Anti-Virus Checks|Base Endpoint Security Checks|Firewall Checks|Network Access|Secure Virtual Keyboard|APM, Web Application|Machine Certificate Checks|Protected Workspace|Compression, Unlimited|Remote Desktop|App Tunnel|GTM Licensed Objects, Unlimited|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|GTM Rate Fallback, (UNLIMITED)|DNS Rate Limit, Unlimited QPS|GTM Rate, Unlimited|SSL, Unlimited, C2400/C4400/C4480|CGN, VIPRION, AFM ONLY|Routing Bundle|PSM|Acceleration Manager, Ltd to Full Upgrade" "GTM|IBQBYMQ-QBUEQYD|STP|GTM, DNS LB|GTM Licensed Objects, Unlimited|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|GTM Rate Fallback, (UNLIMITED)|DNS Rate Limit, Unlimited QPS|GTM Rate, Unlimited" "LTM, Base, C2400|DFEKXAY-UQWVMGS|IPV6 Gateway|Rate Shaping|Ram Cache|50 MBPS COMPRESSION|APM, Limited, Viprion|SSL, 500 TPS Per Core|Cluster Multi-Processing|Anti-Virus Checks|Base Endpoint Security Checks|Firewall Checks|Network Access|Secure Virtual Keyboard|APM, Web Application|Machine Certificate Checks|Protected Workspace|Compression, Unlimited|Remote Desktop|App Tunnel|SSL, Unlimited, C2400/C4400/C4480|CGN, VIPRION, AFM ONLY|Routing Bundle|PSM|DNS Rate Fallback, Unlimited|DNS Licensed Objects, Unlimited|DNS Rate Limit, Unlimited QPS|Acceleration Manager, Ltd to Full Upgrade|SSL, C2200/C2400|AAM, Core" "VCMP Enabled, C2400|QICMGYG-QWVRHRT" }
     base-mac 00:23:e9:4b:db:49
     build 0.0.3
     cert dtdi.crt
     chassis-id chs403255s
     chassis-type viprion
-    contact ITSecurity@penguinrandomhouse.com
+    contact ITSecurity@maskmask.com
     description "Web Development  F5"
     edition "Point Release 6"
     failover-state active
-    hostname ny-f5-rhwebdev1.us.randomhouse.com
+    hostname ny-f5-rhwebdev1.us.mask.com
     key dtdi.key
     location "New York, NY"
-    management-ip 10.10.10.1
+    management-ip xx.xx.xx.1
     marketing-name "BIG-IP vCMP Guest"
     optional-modules { "Acceleration Manager, C2400" "ADC, Security Bundle, C2400" "Advanced Protocols" "AFM, C2400" "APM, Base, C2400" "APM, Max Access Sessions, C2400" "APM, Max CCU, C2400" "App Mode (TMSH Only, No Root/Bash)" "ASM, Bundle, VIPRION" "ASM, PSM to ASM Upgrade" "Better Bundle, C2200 / C2400 Platforms" "Better to Best Bundle, C2200 / C2400 Platforms" "BPEM, C2X00" "CGN, Viprion" "Client Authentication" "Compression, Unlimited" "Concurrent Users" "DNS (Unlimited), VIPRION" "DNS and GTM (1K QPS), VIPRION" "DNS Services, VPR" DNSSEC "Dynamic Policy Provisioning, C2X00" "External Interface and Network HSM" "FIPS 140-2 Compliant Mode, C2X00" "FIX Low Latency" "IP Intelligence, 1Yr, C2400" "IP Intelligence, 3Yr, C2200" "IP Intelligence, 3Yr, C2400" "MSM, Unlimited Mailboxes" "PEM URL Filtering, 1Yr, C2400" "PEM URL Filtering, 3Yr, C2400" "PEM, C2400" "PEM, Quota Management, C2X00" "Performance Extreme, VPR" "PSM, Base" "Routing Bundle" "SDN Services" "Secure Web Gateway, 1Yr, C2200/C2400" "Secure Web Gateway, 1Yr, C2X00, 60K URL Sessions" "Secure Web Gateway, 3Yr, C2200/C2400" "Secure Web Gateway, 3Yr, C2X00, 60K URL Sessions" "SSL, Forward Proxy" "SSL, Unlimited, C2400/C4400/C4480" "Subscriber Discovery, C2X00" "Traffic Classification, C2X00" "URL Filtering, 1Yr, C2200/C2400" "URL Filtering, 1Yr, C2X00, 60K URL Sessions" "URL Filtering, 3Yr, C2200/C2400" "URL Filtering, 3Yr, C2X00, 60K URL Sessions" "VIPRION, Multicast Routing" "WBA, Bundle, C2400" }
     platform-id Z101
@@ -174,17 +174,17 @@ cm device ny-f5-rhwebdev1.us.randomhouse.com {
     time-zone America/New_York
     version 12.1.3.6
 }
-cm device-group datasync-device-ny-f5-rhwebdev1.us.randomhouse.com-dg {
+cm device-group datasync-device-ny-f5-rhwebdev1.us.mask.com-dg {
     auto-sync enabled
     devices {
-        ny-f5-rhwebdev1.us.randomhouse.com { }
+        ny-f5-rhwebdev1.us.mask.com { }
     }
     full-load-on-sync true
     network-failover disabled
 }
 cm device-group datasync-global-dg {
     devices {
-        ny-f5-rhwebdev1.us.randomhouse.com { }
+        ny-f5-rhwebdev1.us.mask.com { }
     }
     full-load-on-sync true
     network-failover disabled
@@ -192,7 +192,7 @@ cm device-group datasync-global-dg {
 cm device-group device-group-failover {
     description "HA Group for Application Failover"
     devices {
-        ny-f5-rhwebdev1.us.randomhouse.com { }
+        ny-f5-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
     type sync-failover
@@ -200,13 +200,13 @@ cm device-group device-group-failover {
 cm device-group device_trust_group {
     auto-sync enabled
     devices {
-        ny-f5-rhwebdev1.us.randomhouse.com { }
+        ny-f5-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
 }
 cm device-group gtm {
     devices {
-        ny-f5-rhwebdev1.us.randomhouse.com { }
+        ny-f5-rhwebdev1.us.mask.com { }
     }
     network-failover disabled
 }
@@ -241,7 +241,7 @@ cm traffic-group traffic-group-local-only {
 cm trust-domain Root {
     ca-cert dtca.crt
     ca-cert-bundle dtca-bundle.crt
-    ca-devices { /Common/ny-f5-rhwebdev1.us.randomhouse.com }
+    ca-devices { /Common/ny-f5-rhwebdev1.us.mask.com }
     ca-key dtca.key
     status standalone
     trust-group device_trust_group
@@ -257,17 +257,17 @@ ltm dns cache global-settings { }
 ltm global-settings connection { }
 ltm global-settings general { }
 ltm global-settings traffic-control { }
-ltm node prhsyslog-new {
-    address 10.104.82.130
+ltm node masksyslog-new {
+    address xx.104.82.130
 }
 ltm node sam-1 {
-    address 10.10.224.50
+    address xx.xx.224.50
 }
 ltm node sam-2 {
-    address 10.10.224.51
+    address xx.xx.224.51
 }
 ltm node wmsyslog {
-    address 10.104.82.171
+    address xx.104.82.171
 }
 ltm persistence global-settings { }
 ltm policy asm_auto_l7_policy__virt-svr-sam1 {
@@ -291,20 +291,20 @@ ltm policy asm_auto_l7_policy__virt-svr-sam1 {
 }
 ltm pool prsyslog-dos {
     members {
-        prhsyslog-new:5445 {
-            address 10.104.82.130
+        masksyslog-new:5445 {
+            address xx.104.82.130
         }
     }
 }
 ltm pool sam-pool-1 {
     members {
         sam-1:http {
-            address 10.10.224.50
+            address xx.xx.224.50
             session monitor-enabled
             state down
         }
         sam-2:http {
-            address 10.10.224.51
+            address xx.xx.224.51
             session monitor-enabled
             state down
         }
@@ -314,10 +314,10 @@ ltm pool sam-pool-1 {
 ltm pool sam-pool-3 {
     members {
         sam-1:https {
-            address 10.10.224.50
+            address xx.xx.224.50
         }
         sam-2:https {
-            address 10.10.224.51
+            address xx.xx.224.51
         }
     }
 }
@@ -325,7 +325,7 @@ ltm pool splunk-logs {
     description "Splunk Logs"
     members {
         wmsyslog:514 {
-            address 10.104.82.171
+            address xx.104.82.171
             session monitor-enabled
             state up
         }
@@ -335,31 +335,31 @@ ltm pool splunk-logs {
 ltm pool splunk-logs-tcp {
     members {
         wmsyslog:514 {
-            address 10.104.82.171
+            address xx.104.82.171
             session monitor-enabled
             state up
         }
     }
     monitor tcp
 }
-ltm profile client-ssl wildcard.dev.penguinrandomhouse.com-clientssl {
+ltm profile client-ssl wildcard.dev.maskmask.com-clientssl {
     app-service none
-    cert wildcard.dev.penguinrandomhouse.com-clientssl.crt
+    cert wildcard.dev.maskmask.com-clientssl.crt
     cert-key-chain {
         wildcard_wildcard {
-            cert wildcard.dev.penguinrandomhouse.com-clientssl.crt
-            chain wildcard.dev.penguinrandomhouse.com-clientssl.crt
-            key wildcard.dev.penguinrandomhouse.com-clientssl.key
+            cert wildcard.dev.maskmask.com-clientssl.crt
+            chain wildcard.dev.maskmask.com-clientssl.crt
+            key wildcard.dev.maskmask.com-clientssl.key
         }
     }
-    chain wildcard.dev.penguinrandomhouse.com-clientssl.crt
+    chain wildcard.dev.maskmask.com-clientssl.crt
     defaults-from clientssl
     destination-ip-blacklist none
     destination-ip-whitelist none
     hostname-blacklist none
     hostname-whitelist none
     inherit-certkeychain false
-    key wildcard.dev.penguinrandomhouse.com-clientssl.key
+    key wildcard.dev.maskmask.com-clientssl.key
     passphrase none
     source-ip-blacklist none
     source-ip-whitelist none
@@ -396,14 +396,14 @@ ltm rule niq-security-block {
     }
 }
 }
-ltm snat-translation 170.171.221.250 {
-    address 170.171.221.250
+ltm snat-translation xx.171.221.250 {
+    address xx.171.221.250
     inherited-traffic-group true
     traffic-group traffic-group-1
 }
 ltm snatpool Default-Web-Sevrer-SNAT-Pool {
     members {
-        170.171.221.250
+        xx.171.221.250
     }
 }
 ltm tacdb licenseddb licensed-tacdb {
@@ -433,7 +433,7 @@ ltm virtual Outbound_FTP {
 }
 ltm virtual virt-svr-sam1 {
     description "test only"
-    destination 10.10.220.50:http
+    destination xx.xx.220.50:http
     ip-protocol tcp
     mask 255.255.255.255
     policies {
@@ -457,7 +457,7 @@ ltm virtual virt-svr-sam1 {
 }
 ltm virtual virt-svr-sam3 {
     description "sam li test"
-    destination 10.10.220.50:https
+    destination xx.xx.220.50:https
     ip-protocol tcp
     mask 255.255.255.255
     profiles {
@@ -466,7 +466,7 @@ ltm virtual virt-svr-sam3 {
             context serverside
         }
         tcp { }
-        wildcard.dev.penguinrandomhouse.com-clientssl {
+        wildcard.dev.maskmask.com-clientssl {
             context clientside
         }
     }
@@ -480,7 +480,7 @@ ltm virtual virt-svr-sam3 {
     translate-address enabled
     translate-port enabled
     vlans {
-        Vlan422-WebSrvr-10.10.222.x
+        Vlan422-WebSrvr-xx.xx.222.x
         dev_int_vlan703
     }
     vlans-enabled
@@ -491,15 +491,15 @@ net dag-globals { }
 net fdb tunnel http-tunnel { }
 net fdb tunnel socks-tunnel { }
 net fdb vlan Ha_55 { }
-net fdb vlan VLAN200-Public-170.171.1.x { }
-net fdb vlan VLAN420-WebSvcs-10.10.220.x { }
-net fdb vlan VLAN424-WebSrvr-10.10.224.x { }
-net fdb vlan VLAN426-AppSvcs-10.10.226.x { }
-net fdb vlan VLAN428-XdmzSvcs-10.10.228.x { }
-net fdb vlan VLAN430-XdmzSrvr-10.10.230.x { }
-net fdb vlan VLAN437-XappSrvr-10.10.237.x { }
-net fdb vlan VLAN702-Internal-10.201.4.x { }
-net fdb vlan Vlan422-WebSrvr-10.10.222.x { }
+net fdb vlan VLAN200-Public-xx.171.1.x { }
+net fdb vlan VLAN420-WebSvcs-xx.xx.220.x { }
+net fdb vlan VLAN424-WebSrvr-xx.xx.224.x { }
+net fdb vlan VLAN426-AppSvcs-xx.xx.226.x { }
+net fdb vlan VLAN428-XdmzSvcs-xx.xx.228.x { }
+net fdb vlan VLAN430-XdmzSrvr-xx.xx.230.x { }
+net fdb vlan VLAN437-XappSrvr-xx.xx.237.x { }
+net fdb vlan VLAN702-Internal-xx.201.4.x { }
+net fdb vlan Vlan422-WebSrvr-xx.xx.222.x { }
 net fdb vlan dev_int_vlan703 { }
 net interface 2/mgmt {
     if-index 34
@@ -518,14 +518,14 @@ net route-domain 0 {
         http-tunnel
         socks-tunnel
         Ha_55
-        VLAN420-WebSvcs-10.10.220.x
-        VLAN424-WebSrvr-10.10.224.x
-        VLAN426-AppSvcs-10.10.226.x
-        VLAN428-XdmzSvcs-10.10.228.x
-        VLAN430-XdmzSrvr-10.10.230.x
-        VLAN437-XappSrvr-10.10.237.x
-        VLAN702-Internal-10.201.4.x
-        Vlan422-WebSrvr-10.10.222.x
+        VLAN420-WebSvcs-xx.xx.220.x
+        VLAN424-WebSrvr-xx.xx.224.x
+        VLAN426-AppSvcs-xx.xx.226.x
+        VLAN428-XdmzSvcs-xx.xx.228.x
+        VLAN430-XdmzSrvr-xx.xx.230.x
+        VLAN437-XappSrvr-xx.xx.237.x
+        VLAN702-Internal-xx.201.4.x
+        Vlan422-WebSrvr-xx.xx.222.x
         dev_int_vlan703
     }
 }
@@ -585,39 +585,39 @@ net vlan Ha_55 {
     if-index 96
     tag 55
 }
-net vlan VLAN200-Public-170.171.1.x {
+net vlan VLAN200-Public-xx.171.1.x {
     if-index 112
     tag 200
 }
-net vlan VLAN420-WebSvcs-10.10.220.x {
+net vlan VLAN420-WebSvcs-xx.xx.220.x {
     if-index 128
     tag 420
 }
-net vlan VLAN424-WebSrvr-10.10.224.x {
+net vlan VLAN424-WebSrvr-xx.xx.224.x {
     if-index 144
     tag 424
 }
-net vlan VLAN426-AppSvcs-10.10.226.x {
+net vlan VLAN426-AppSvcs-xx.xx.226.x {
     if-index 160
     tag 426
 }
-net vlan VLAN428-XdmzSvcs-10.10.228.x {
+net vlan VLAN428-XdmzSvcs-xx.xx.228.x {
     if-index 176
     tag 428
 }
-net vlan VLAN430-XdmzSrvr-10.10.230.x {
+net vlan VLAN430-XdmzSrvr-xx.xx.230.x {
     if-index 192
     tag 4094
 }
-net vlan VLAN437-XappSrvr-10.10.237.x {
+net vlan VLAN437-XappSrvr-xx.xx.237.x {
     if-index 208
     tag 437
 }
-net vlan VLAN702-Internal-10.201.4.x {
+net vlan VLAN702-Internal-xx.201.4.x {
     if-index 224
     tag 702
 }
-net vlan Vlan422-WebSrvr-10.10.222.x {
+net vlan Vlan422-WebSrvr-xx.xx.222.x {
     if-index 240
     tag 422
 }
@@ -1564,10 +1564,10 @@ security dos bot-signature "SipCLI VOIP Scan" {
     rule "headercontent:\"sipcli\"; useragentonly; nocase;"
     user-defined false
 }
-security dos bot-signature "Spyware MSIE 10.0" {
+security dos bot-signature "Spyware MSIE xx.0" {
     category Spyware
     risk high
-    rule "headercontent:\"MSIE 10.0\"; useragentonly; nocase; headercontent:\"Windows 3.1\"; useragentonly; nocase;"
+    rule "headercontent:\"MSIE xx.0\"; useragentonly; nocase; headercontent:\"Windows 3.1\"; useragentonly; nocase;"
     user-defined false
 }
 security dos bot-signature "Synaptive Syndicator" {
@@ -6283,7 +6283,7 @@ security firewall policy Outbound_FTP {
     rules {
         Outbound_FTP {
             action accept
-            description "allow specific web servers in DEV DMZ ftp  access to prhaudio.upload.akamai.com"
+            description "allow specific web servers in DEV DMZ ftp  access to maskaudio.upload.akamai.com"
             ip-protocol tcp
             log yes
             destination {
@@ -6294,10 +6294,10 @@ security firewall policy Outbound_FTP {
             }
             source {
                 addresses {
-                    10.107.222.31 { }
+                    xx.107.222.31 { }
                 }
                 vlans {
-                    Vlan422-WebSrvr-10.10.222.x
+                    Vlan422-WebSrvr-xx.xx.222.x
                 }
             }
         }
@@ -6427,7 +6427,7 @@ security log profile splunk-logging {
                 user-string "f5_asm=Splunk-F5-ASM,attack_type=\"%attack_type%\",date_time=\"%date_time%\",dest_ip=%dest_ip%,dest_port=%dest_port%,headers=\"%headers%\",ip_client=%ip_client%,geo_location=\"%geo_location%\",method=\"%method%\",policy_name=\"%policy_name%\",req=\"%request%\",req_status=\"%request_status%\",resp=\"%response%\",resp_code=\"%response_code%\",severity=\"%severity%\",sub_violates=\"%sub_violations%\",unit_host=\"%unit_hostname%\",uri=\"%uri%\",username=\"%username%\",violations=\"%violations%\",virus_name=\"%virus_name%\",sig_ids=\"%sig_ids%\",sig_names=\"%sig_names%\",support_id=\"%support_id%\",ip_address_intelligence=\"%ip_address_intelligence%\",violation_details=\"%violation_details%\" "
             }
             servers {
-                10.104.82.171:514 { }
+                xx.104.82.171:514 { }
             }
         }
     }
@@ -6482,7 +6482,7 @@ security log profile splunk-logging_local {
 sys aom { }
 sys autoscale-group { }
 sys cluster default {
-    address 10.105.7.57/24
+    address xx.105.7.57/24
     members {
         1 { }
         2 { }
@@ -6491,10 +6491,10 @@ sys cluster default {
     }
     min-up-members 1
 }
-sys crypto cert wildcard.dev.penguinrandomhouse.com-clientssl.crt {
+sys crypto cert wildcard.dev.maskmask.com-clientssl.crt {
     certificate-key-size 2048
     city
-    common-name *.dev.penguinrandomhouse.com
+    common-name *.dev.maskmask.com
     country
     email-address
     expiration Jul 15 23:59:59 2020 GMT
@@ -6502,9 +6502,9 @@ sys crypto cert wildcard.dev.penguinrandomhouse.com-clientssl.crt {
     ou Domain Control Validated
     public-key-type RSA
     state
-    subject-alternative-name DNS:dev.penguinrandomhouse.com, DNS:*.dev.penguinrandomhouse.com
+    subject-alternative-name DNS:dev.maskmask.com, DNS:*.dev.maskmask.com
 }
-sys crypto key wildcard.dev.penguinrandomhouse.com-clientssl.key {
+sys crypto key wildcard.dev.maskmask.com-clientssl.key {
     key-size 2048
     key-type rsa-private
     security-type normal
@@ -6561,8 +6561,8 @@ sys disk logical-disk HD1/2 {
     vg-in-use 92976
 }
 sys dns {
-    name-servers { 10.105.2.55 10.105.3.55 }
-    search { us.randomhouse.com }
+    name-servers { xx.105.2.55 xx.105.3.55 }
+    search { us.mask.com }
 }
 sys ecm cloud-provider aws-ec2 {
     description "The aws-ec2 parameters"
@@ -6595,7 +6595,7 @@ sys ecm config { }
 sys feature-module cgnat {
     disabled
 }
-sys file ssl-cert wildcard.dev.penguinrandomhouse.com-clientssl.crt {
+sys file ssl-cert wildcard.dev.maskmask.com-clientssl.crt {
     certificate-key-size 2048
     checksum SHA1:8112:ab2e53b9f5cc1a9436c72794c30f473b38acc512
     create-time 2018-08-09:14:22:24
@@ -6611,12 +6611,12 @@ sys file ssl-cert wildcard.dev.penguinrandomhouse.com-clientssl.crt {
     serial-number e1:cb:d3:75:13:6f:c0:75:df:64:a6:c9:c3:ca:6c:18
     size 8112
     source-path file:/var/config/rest/downloads/BIGIQ_Uploaded_654972c4-763a-3876-9995-e6b48fc7a139
-    subject "CN=*.dev.penguinrandomhouse.com,OU=EssentialSSL Wildcard,OU=Domain Control Validated"
-    subject-alternative-name "DNS:dev.penguinrandomhouse.com, DNS:*.dev.penguinrandomhouse.com"
+    subject "CN=*.dev.maskmask.com,OU=EssentialSSL Wildcard,OU=Domain Control Validated"
+    subject-alternative-name "DNS:dev.maskmask.com, DNS:*.dev.maskmask.com"
     updated-by root
     version 3
 }
-sys file ssl-key wildcard.dev.penguinrandomhouse.com-clientssl.key {
+sys file ssl-key wildcard.dev.maskmask.com-clientssl.key {
     checksum SHA1:1675:5c4541e2bdcd23adbb36ca2604689f30c862c3c6
     create-time 2018-08-09:14:22:24
     created-by root
@@ -6652,24 +6652,24 @@ sys fpga firmware-config {
 sys global-settings {
     gui-security-banner-text "################################################################################
 
-THIS IS A PROPRIETARY PENGUIN RANDOM HOUSE SYSTEM, RESTRICTED TO AUTHORIZED
-PERSONNEL AND FOR OFFICIAL, AUTHORIZED PENGUIN RANDOM HOUSE BUSINESS ONLY.
+THIS IS A PROPRIETARY mask mask HOUSE SYSTEM, RESTRICTED TO AUTHORIZED
+PERSONNEL AND FOR OFFICIAL, AUTHORIZED mask mask HOUSE BUSINESS ONLY.
 ANYONE USING THIS SYSTEM, NETWORK OR DATA IS SUBJECT TO MONITORING AT ANY
 TIME.  ANYONE USING THIS SYSTEM THEREBY EXPRESSLY CONSENTS TO SUCH MONITORING
 AND IS FURTHER ADVISED THAT ANY EVIDENCE OF CRIMINAL AND/OR OTHERWISE IMPROPER
 OR UNAUTHORIZED ACTIVITY MAY BE PROVIDED TO LAW ENFORCEMENT OFFICIALS FOR
-PROSECUTION AND/OR USED BY PENGUIN RANDOM HOUSE AS IT SEES FIT.
+PROSECUTION AND/OR USED BY mask mask HOUSE AS IT SEES FIT.
 
 ################################################################################"
     gui-setup disabled
-    hostname ny-f5-rhwebdev1.us.randomhouse.com
+    hostname ny-f5-rhwebdev1.us.mask.com
     remote-host {
         host1 {
-            addr 10.104.8.12
+            addr xx.104.8.12
             hostname wmtime
         }
         host2 {
-            addr 10.105.3.111
+            addr xx.105.3.111
             hostname nytime
         }
     }
@@ -6718,91 +6718,91 @@ sys management-ovsdb {
     log-level info
 }
 sys management-route WM-F5-MANAGEMENT {
-    gateway 10.105.7.1
-    network 10.104.52.0/24
+    gateway xx.105.7.1
+    network xx.104.52.0/24
 }
 sys management-route WM-Management-F5 {
-    gateway 10.105.7.1
-    network 10.104.82.0/24
+    gateway xx.105.7.1
+    network xx.104.82.0/24
 }
 sys management-route WMMANAGEMENT {
-    gateway 10.105.7.1
-    network 10.104.53.0/24
+    gateway xx.105.7.1
+    network xx.104.53.0/24
 }
 sys management-route JEFFNET {
-    gateway 10.105.7.1
-    network 10.102.253.0/24
+    gateway xx.105.7.1
+    network xx.102.253.0/24
 }
 sys management-route SKANET {
-    gateway 10.105.7.1
-    network 10.102.254.0/24
+    gateway xx.105.7.1
+    network xx.102.254.0/24
 }
 sys management-route NYVPN-IT {
-    gateway 10.105.7.1
-    network 10.105.248.0/23
+    gateway xx.105.7.1
+    network xx.105.248.0/23
 }
 sys management-route NYVPN {
-    gateway 10.105.7.1
-    network 10.105.242.0/23
+    gateway xx.105.7.1
+    network xx.105.242.0/23
 }
 sys management-route NYIT {
-    gateway 10.105.7.1
-    network 10.108.6.0/23
+    gateway xx.105.7.1
+    network xx.108.6.0/23
 }
 sys management-route WMIT {
-    gateway 10.105.7.1
-    network 10.104.115.0/24
+    gateway xx.105.7.1
+    network xx.104.115.0/24
 }
 sys management-route WMARCHIVE01 {
-    gateway 10.105.7.1
-    network 10.104.10.30/32
+    gateway xx.105.7.1
+    network xx.104.xx.30/32
 }
 sys management-route NYTIME {
-    gateway 10.105.7.1
-    network 10.105.3.111/32
+    gateway xx.105.7.1
+    network xx.105.3.111/32
 }
 sys management-route WMTIME {
-    gateway 10.105.7.1
-    network 10.104.8.12/32
+    gateway xx.105.7.1
+    network xx.104.8.12/32
 }
 sys management-route NYDC-5 {
-    gateway 10.105.7.1
-    network 10.105.3.55/32
+    gateway xx.105.7.1
+    network xx.105.3.55/32
 }
 sys management-route NYDC-4-new {
-    gateway 10.105.7.1
-    network 10.105.2.54/32
+    gateway xx.105.7.1
+    network xx.105.2.54/32
 }
 sys management-route NYDC-4 {
-    gateway 10.105.7.1
-    network 10.105.2.55/32
+    gateway xx.105.7.1
+    network xx.105.2.55/32
 }
 sys management-route NYDC-3 {
-    gateway 10.105.7.1
-    network 10.105.2.61/32
+    gateway xx.105.7.1
+    network xx.105.2.61/32
 }
 sys management-route NYDC-7 {
-    gateway 10.105.7.1
-    network 10.105.3.46/32
+    gateway xx.105.7.1
+    network xx.105.3.46/32
 }
 sys management-route NYDC-6 {
-    gateway 10.105.7.1
-    network 10.105.2.53/32
+    gateway xx.105.7.1
+    network xx.105.2.53/32
 }
 sys management-route WMDC-2 {
-    gateway 10.105.7.1
-    network 10.104.8.202/32
+    gateway xx.105.7.1
+    network xx.104.8.202/32
 }
 sys management-route WMDC-1 {
-    gateway 10.105.7.1
-    network 10.104.8.201/32
+    gateway xx.105.7.1
+    network xx.104.8.201/32
 }
 sys management-route default {
-    gateway 10.105.7.1
+    gateway xx.105.7.1
     network default
 }
 sys ntp {
-    servers { nytime.us.randomhouse.com wmtime.us.randomhouse.com }
+    servers { nytime.us.mask.com wmtime.us.mask.com }
     timezone America/New_York
 }
 sys outbound-smtp {
@@ -6827,18 +6827,18 @@ sys sflow global-settings system { }
 sys sflow global-settings vlan { }
 sys smtp-server mimecast-smtp {
     authentication-enabled
-    from-address ny-f5@relay.prh.com
+    from-address ny-f5@relay.mask.com
     password-encrypted MASKED==xxxxxx
     smtp-server-host-name us-smtp-outbound-1.mimecast.com
     smtp-server-port submission
-    username ny-f5@relay.prh.com
+    username ny-f5@relay.mask.com
 }
 sys smtp-server us-smtp-outbound-1.mimecast.com {
     authentication-enabled
     password-encrypted MASKEDXXXXXX==
     smtp-server-host-name us-smtp-outbound-1.mimecast.com
     smtp-server-port submission
-    username ny-f5@relay.prh.com
+    username ny-f5@relay.mask.com
 }
 sys snmp {
     agent-addresses { tcp6:161 udp6:161 }
@@ -7088,13 +7088,13 @@ sys sshd {
     banner enabled
     banner-text "################################################################################
 
-THIS IS A PROPRIETARY PENGUIN RANDOM HOUSE SYSTEM, RESTRICTED TO AUTHORIZED
-PERSONNEL AND FOR OFFICIAL, AUTHORIZED PENGUIN RANDOM HOUSE BUSINESS ONLY.
+THIS IS A PROPRIETARY mask mask HOUSE SYSTEM, RESTRICTED TO AUTHORIZED
+PERSONNEL AND FOR OFFICIAL, AUTHORIZED mask mask HOUSE BUSINESS ONLY.
 ANYONE USING THIS SYSTEM, NETWORK OR DATA IS SUBJECT TO MONITORING AT ANY
 TIME.  ANYONE USING THIS SYSTEM THEREBY EXPRESSLY CONSENTS TO SUCH MONITORING
 AND IS FURTHER ADVISED THAT ANY EVIDENCE OF CRIMINAL AND/OR OTHERWISE IMPROPER
 OR UNAUTHORIZED ACTIVITY MAY BE PROVIDED TO LAW ENFORCEMENT OFFICIALS FOR
-PROSECUTION AND/OR USED BY PENGUIN RANDOM HOUSE AS IT SEES FIT.
+PROSECUTION AND/OR USED BY mask mask HOUSE AS IT SEES FIT.
 
 ################################################################################"
 }
@@ -7102,8 +7102,8 @@ sys state-mirroring { }
 sys syslog {
     kern-from notice
     remote-servers {
-        wmsyslog.us.randomhouse.com {
-            host 10.104.82.171
+        wmsyslog.us.mask.com {
+            host xx.104.82.171
         }
     }
 }

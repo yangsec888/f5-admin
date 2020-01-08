@@ -1,4 +1,4 @@
-[![image](/images/f5_logo.png)](https://git.us.randomhouse.com/sli/f5)
+[![image](/images/f5_logo.png)](https://github.com/yangsec888/f5-admin)
 =====================
 
 - [Current version](#current-version)
@@ -91,7 +91,7 @@ Introduce F5DataGroup class to manage the F5 data group objects.
 Introduce f5_client.py basic class to manage F5
 
 ## Source Code
-Latest source code can be found in the new home: [PRH Gitlab](https://git.us.randomhouse.com/sli/f5).
+Latest source code can be found in the new home: [Github](https://github.com/yangsec888/f5-admin).
 
 ## Installation
 Refer to [README](README.md) for the instructions on how to build and install from the software.
@@ -105,4 +105,4 @@ Please keep the tool internally only. Do NOT publish it as it may contain propri
 
 
 ## Question?
-Please contact [Sam Li](mailto:sli@penguinrandomhouse.com) for any question at 
+Please contact [Sam Li](mailto:yangsec888@gmail.com) for any question at

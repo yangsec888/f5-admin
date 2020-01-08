@@ -4,7 +4,7 @@ import os
 import re
 import socket
 
-test_host="www.penguinrandomhouse.com"
+test_host="www.google.com"
 
 class TestUtil(unittest.TestCase):
 

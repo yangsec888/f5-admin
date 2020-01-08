@@ -1,4 +1,4 @@
-[![image](/images/f5_logo.png)](https://git.us.randomhouse.com/sli/f5)
+[![image](/images/f5_logo.png)](https://github.com/yangsec888/f5-admin)
 =====================
 
 - [Introduction](#introduction)
@@ -17,7 +17,7 @@ F5 configuration has a very complicate multiple-layer structure. The best way to
 =====================
 
 ### What's F5 Configuration Object Dependency Tree Resolving Algorithm
-The [F5 Configuration Object Dependency Tree Resolving algorithm](https://git.us.randomhouse.com/sli/f5/blob/master/src/f5_dep_tree.py), is a custom algorithm implemented by [Sam Li](https://www.linkedin.com/in/yangli8/). The goal is to identify and manage the complicate dependencies between a very large pool of F5 single configuration object efficiently.
+The [F5 Configuration Object Dependency Tree Resolving algorithm](https://github.com/yangsec888/f5-admin/blob/master/src/f5_dep_tree.py), is a custom algorithm implemented by [Sam Li](https://www.linkedin.com/in/yangli8/). The goal is to identify and manage the complicate dependencies between a very large pool of F5 single configuration object efficiently.
 
 The algorithm is based on [Graph Theory](https://en.wikipedia.org/wiki/Graph_theory#Computer_science), and the previous Python implementation from others, such as [Ferry Boender](https://www.electricmonk.nl/docs/dependency_resolving_algorithm/dependency_resolving_algorithm.html#copyright-license).  
 
@@ -29,7 +29,7 @@ In the data structure implementation, I keep the basic node structure. However, 
 - Simplify 'Circular reference check' by using existing global variable 'resolved' .
 
 In the algorithm implementation, the basic ideas are still the same. However, there are many additions unique in our case:
-- Extending the [F5Client](https://git.us.randomhouse.com/sli/f5/blob/master/src/f5_client.py) class;
+- Extending the [F5Client](https://github.com/yangsec888/f5-admin/blob/master/src/f5_client.py) class;
 - Build out the whole tree structure;
 - Automating the tree node loading process;
 - Additional sanity checks and better error handlings.

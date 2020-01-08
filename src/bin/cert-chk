@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+mask#!/usr/bin/env python
 #
 print("""
 ################################################################################
@@ -76,7 +76,7 @@ def chk_worker(f5_node):
                         print("client_ssl_obj: ")
                         my_f5.print_obj(client_ssl_key,client_ssl_obj)
                     notice = "F5 Node: " + my_f5.node  + " => F5 Config Object: " + x + " => VIP:" + vip + " => client_ssl profile: " + client_ssl_key + " => Cert_name: " + cert_name + " => Expiration: " + ts_to_str(int(expiration))
-                    #mail_cmd = "mail -s \"Digital Cert 30 Days Expiration Notice\" itsecurity@penguinrandomhouse.com <<< " + "\"" + notice + "\""
+                    #mail_cmd = "mail -s \"Digital Cert 30 Days Expiration Notice\" itsecurity@mask.com <<< " + "\"" + notice + "\""
                     print("Notice: ", notice)
                     #print "Command: ", mail_cmd
                     #os.system(mail_cmd)
@@ -89,12 +89,12 @@ def notice_30days_expiration(to_email,notice):
     # build the email content
     msg = MIMEMultipart('alternative')
     msg['Subject'] = "Client SSL Cert 30 Day Expiration Notice @wmstools01"
-    msg['From'] = str(Header('Deploy Engineer <deploy@apps.randomhouse.com>'))
+    msg['From'] = str(Header('Deploy Engineer <deploy@apps.mask.com>'))
     msg['To'] = to_email
     mime_part = MIMEText(notice, 'plain')
     msg.attach(mime_part)
     # send out email
-    server=smtplib.SMTP("exrelay.us.randomhouse.com:25")
+    server=smtplib.SMTP("exrelay.us.mask.com:25")
     server.sendmail(msg['From'],msg['To'], msg.as_string())
     server.quit()
     print("Email sent. ")

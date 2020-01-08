@@ -1,4 +1,4 @@
-[![image](/images/f5_logo.png)](https://git.us.randomhouse.com/sli/f5)
+[![image](/images/f5_logo.png)](https://github.com/yangsec888/f5-admin)
 =====================
 
 - [Introduction](#introduction)
@@ -23,27 +23,27 @@ You can use the TMOS Shell (tmsh) to define all BIG-IP configuration elements in
 Within the SCF, there are composed of F5 objects, I would call them Single Configuration Object (SCO). Examples of F5 SCOs can be found in a simple SCF below:
 ```
 ltm node sam-1  {
-    address 10.106.224.50
+    address xx.xx.224.50
 }
 
 ltm node sam-2  {
-    address 10.106.224.51
+    address xx.xx.224.51
 }
 
 ltm pool sam-pool-3  {
     members {
         sam-1:https {
-            address 10.106.224.50
+            address xx.xx.224.50
         }
         sam-2:https {
-            address 10.106.224.51
+            address xx.xx.224.51
         }
     }
 }
 
 ltm virtual virt-svr-sam1  {
     description "test only"
-    destination 10.106.220.70:http
+    destination xx.xx.220.70:http
     ip-protocol tcp
     mask 255.255.255.255
     pool sam-pool-3
@@ -114,7 +114,7 @@ F5 running configuration is saved to file:  /Library/Python/2.7/site-packages/f5
 Filter out interesting F5 running configuration objects. This will be done from your command line by working on the cache file:
 
 ```bash
-$ f5-get -n ny-f5-gtmprd1 -f1 corpdir.prh.com
+$ f5-get -n ny-f5-gtmprd1 -f1 corpdir.mask.com
 ...
 Parsing the f5 running configurations ...
 Parsing done.
@@ -124,7 +124,7 @@ Filtering F5 objects ...
 Filtering done.
 
 Found Total Number of Filtered objects: 2
-gtm pool a corpdir.prh.com-int {
+gtm pool a corpdir.mask.com-int {
  alternate-mode global-availability
  fallback-mode none
  load-balancing-mode topology
@@ -137,9 +137,9 @@ gtm pool a corpdir.prh.com-int {
  }
  }
 }
-gtm wideip a corpdir-int.glb.prh.com {
+gtm wideip a corpdir-int.glb.mask.com {
  pools {
- corpdir.prh.com-int {
+ corpdir.mask.com-int {
  order 0
  }
  }

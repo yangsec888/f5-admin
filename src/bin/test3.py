@@ -5,7 +5,7 @@ with f5_admin.F5DepTree(None,None,None) as client:
     client.load(f5_node)
     #for node in client.dep_tree.values():
     #    print node.name, node.edges
-    conf_obj_name = "ltm virtual cart-dev.penguinrandomhouse.com-ext-ssl"
+    conf_obj_name = "ltm virtual cart-dev.mask.com-ext-ssl"
     result = client.dep_resolve(conf_obj_name)
     print(("Resolving configuration dependency on ", f5_node, 'for object:', conf_obj_name))
     print(result)

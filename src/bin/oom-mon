@@ -61,7 +61,7 @@ def mon_worker(f5_node):
         if result in ["",None]:
             return result
         elif result == []:
-            return result 
+            return result
         elif len(result[0]) > 1:
             print("OOM killer message details: ", result)
             notice = "F5 Node: " + client.node  + " OMM kill chain evoked: " + result[0]
@@ -75,12 +75,12 @@ def send_notice(to_email,notice):
     # build the email content
     msg = MIMEMultipart('alternative')
     msg['Subject'] = "F5 OOM Killer Warning @wmstools01"
-    msg['From'] = str(Header('Deploy Engineer <deploy@apps.randomhouse.com>'))
+    msg['From'] = str(Header('Deploy Engineer <deploy@apps.mask.com>'))
     msg['To'] = to_email
     mime_part = MIMEText(notice, 'plain')
     msg.attach(mime_part)
     # send out email
-    server=smtplib.SMTP("exrelay.us.randomhouse.com:25")
+    server=smtplib.SMTP("exrelay.us.mask.com:25")
     server.sendmail(msg['From'],msg['To'], msg.as_string())
     server.quit()
     print("Email sent. ")

@@ -1,4 +1,4 @@
-[![image](/images/f5_logo.png)](https://git.us.randomhouse.com/sli/f5)
+[![image](/images/f5_logo.png)](https://github.com/yangsec888/f5-admin)
 =====================
 
 - [What is it?](#what-is-it)
@@ -63,7 +63,7 @@ $ python -m unittest discover tests/
 There are several ways you can install the Python package in your favorite system.
 
 ### Build the Python Package from Source
-Once you [download and unzip](https://git.us.randomhouse.com/sli/f5/repository/master/archive.zip) the source code, find and run the rebuild.sh script under the source root directory:
+Once you [download and unzip](https://github.com/yangsec888/f5-admin/repository/master/archive.zip) the source code, find and run the rebuild.sh script under the source root directory:
 
 ```bash
 $ python setup.py sdist bdist_wheel

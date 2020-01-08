@@ -81,12 +81,12 @@ def send_notice(to_email,notice):
     # build the email content
     msg = MIMEMultipart('alternative')
     msg['Subject'] = "F5 Disk Partition Utilization Warning @wmstools01"
-    msg['From'] = str(Header('Deploy Engineer <deploy@apps.randomhouse.com>'))
+    msg['From'] = str(Header('Deploy Engineer <deploy@apps.mask.com>'))
     msg['To'] = to_email
     mime_part = MIMEText(notice, 'plain')
     msg.attach(mime_part)
     # send out email
-    server=smtplib.SMTP("exrelay.us.randomhouse.com:25")
+    server=smtplib.SMTP("exrelay.us.mask.com:25")
     server.sendmail(msg['From'],msg['To'], msg.as_string())
     server.quit()
     print("Email sent. ")
