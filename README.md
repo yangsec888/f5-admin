@@ -94,3 +94,4 @@ f5-admin                               1.1.2
 Refer to [TODO](/TODO.md) document for complete list of expectations / project roadmap.
 ## Who is this guy?
 Sam (Yang) Li serves as the IT Security Architect in the infrastructure team. He is an information security veteran with 20 years hand-on experiences in the fields. You can connect him in [LinkedIn](https://www.linkedin.com/in/yangli8/).
+### [License](/LICENSE.txt)
