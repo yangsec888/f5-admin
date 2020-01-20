@@ -135,11 +135,11 @@ class F5DepTree(F5Client):
     # parse afm single configuration object, then extract and build the relationships
     def build_tree_branches_afm_policy(self, node):
         for entry in self.top_objs[node.name]:
-            if " rule-list " in entry:       # add dependendant rule list
+            if " rule-list " in entry:       # add dependant rule list
                 pool_node_name = "security firewall rule-list " + entry.split(' ')[-1]
                 if pool_node_name in list(self.top_objs.keys()):
                     node.addEdge(pool_node_name)
-            if "address-lists {" in entry:   # add dependendant address-lists
+            if "address-lists {" in entry:   # add dependant address-lists
                 addr_lists = self.parse_obj_one_indention("address-lists {", self.top_objs[node.name])
                 for addr in addr_lists:
                     pool_node_name_1 = "security firewall address-list " + addr.split(" ")[-1]
@@ -148,10 +148,22 @@ class F5DepTree(F5Client):
                         node.addEdge(pool_node_name_1)
                     if pool_node_name_2 in list(self.top_objs.keys()):
                         node.addEdge(pool_node_name_2)
-            if "fqdns {" in entry:          # add dependendant fqdn list
+            if "fqdns {" in entry:          # add dependant fqdn list
                 fqdns = self.parse_obj_one_indention("fqdns {", self.top_objs[node.name])
                 for fqdn in fqdns:
                     pool_node_name = "security firewall fqdn-entity " + fqdn.split(" ")[-3]
+                    if pool_node_name in list(self.top_objs.keys()):
+                        node.addEdge(pool_node_name)
+            if "port-lists {" in entry:   # add dependant port-lists
+                port_lists = self.parse_obj_one_indention("port-lists {", self.top_objs[node.name])
+                for port in port_lists:
+                    pool_node_name = "security firewall port-list " + port.split(" ")[-1]
+                    if pool_node_name in list(self.top_objs.keys()):
+                        node.addEdge(pool_node_name)
+            if "vlans {" in entry:   # add dependant vlans
+                vlan_lists = self.parse_obj_one_indention("vlans {", self.top_objs[node.name])
+                for vlan in vlan_lists:
+                    pool_node_name = "net vlan " + vlan.split(" ")[-1]
                     if pool_node_name in list(self.top_objs.keys()):
                         node.addEdge(pool_node_name)
         return None
