@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to remove the F5 Configuration Objects from
+#  the F5 running configuration file.
+#
+################################################################################
+# Version: 0.1, Date: March 10 2020
+# Author: Sam Li, yangsec888@gmail.com, x.x.1972
+# Usage:
+#         $ f5-delete --node xxx --file abc
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+import f5_admin
+from f5_admin.util import *
+import argparse
+import getpass
+import sys
+import os
+import re
+
+# command argument switch setup
+parser = argparse.ArgumentParser(description='This program will delete F5 configuration objects from the running configuration. ')
+parser.add_argument('-n','--node', help='Remote F5 hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=True)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-f','--file',help='File path to the F5 configuration objects in the local file system. ', required=True)
+args = parser.parse_args()
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple program argument check
+    if not args.node:
+        print("Usage: ", __file__, " -h")
+        exit(1)
+    #else:
+        # do nothing. program proceeding
+    # Setup F5 connection string
+    if args.password:
+        credential = set_credential_1(args.user, *args.password)
+    else:
+        credential = set_credential_2(args.user)
+
+    #  Initialize a F5 instance
+    with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+        print("\nDelete configuration objects in F5 node: ",args.node, "...","\n")
+        my_f5.load(args.node)
+        # Evaluate the local merge file - upload a copy to F5 if exist
+        if not os.path.isfile(args.file):
+            print("Please check your file path again: ",args.file)
+            sys.exit(1)
+        else:
+            f5_objs=my_f5.parse_conf_file(args.file)
+        if my_f5.credential["user_name"] == "root":
+            cmd_prefix = "tmsh "
+        else:
+            cmd_prefix = ""
+        cmd_03 = cmd_prefix + "save /sys config partitions all"
+        # sync to slave failover device
+        cmd_06 = cmd_prefix + "run /cm config-sync to-group device-group-failover"
+        conn = my_f5.ssh_connect()
+        for x in f5_objs.keys():
+            cmd = cmd_prefix + "delete " + x
+            out = my_f5.ssh_command(conn,cmd,"")
+            if len(out) > 0:
+                print("Here is the command execution result: ")
+                for z in out:
+                    print(z)
+        for y in [cmd_06,cmd_03]:
+            out = my_f5.ssh_command(conn,y,"")
+            if len(out) > 0:
+                print("Here is the command execution result: ")
+                for z in out:
+                    print(z)
+        conn.close()
+    # Step 5: Print the confirmation
+    print("""
+All done. Bye!""")

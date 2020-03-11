@@ -27,7 +27,7 @@ setup(
     include_package_data=True,
     scripts=['src/bin/f5-get', 'src/bin/f5-put', 'src/bin/f5-run', 'src/bin/f5-runs', 'src/bin/f5-sync',
             'src/bin/f5-backup', 'src/bin/f5-setup-backup', 'src/bin/f5-standby', 'src/bin/f5-resolve',
-            'src/bin/f5-search', 'src/bin/f5-fetch','src/bin/f5-install-cert',
+            'src/bin/f5-search', 'src/bin/f5-fetch','src/bin/f5-install-cert', 'src/bin/f5-delete',
             'src/bin/asm-get', 'src/bin/asm-put',
             'src/bin/dg-get', 'src/bin/dg-put', 'src/bin/dg-sap',
             'src/bin/gap-vip', 'src/bin/gap-client-ssl', 'src/bin/cert-chk',

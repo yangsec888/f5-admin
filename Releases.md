@@ -3,6 +3,7 @@
 
 - [Current version](#current-version)
 - [What's New](#whats-new)
+  - [Release 1.1.8](#release-118)
   - [Release 1.1.6](#release-116)
   - [Release 1.1.5](#release-115)
   - [Release 1.1.4](#release-114)
@@ -32,6 +33,9 @@ The API provides a direct hook to the F5 TMOS command line interface from your w
 In this release, the package structure is changed. In addition to the base class F5Client, now we have super class such as F5Asm, F5DataGroup that handle respective challenges within their own name space.
 
 In additional to new features and the bug fixes, additional utilities / executables are added as below:
+
+### Release 1.1.8
+- f5-delete: This utility is the opposite of 'f5-put'. It will parse and delete the F5 configuration objects.
 
 ### Release 1.1.6
 - Source code conversion from [Python 2 to 3](https://docs.python.org/2/library/2to3.html).

@@ -49,7 +49,7 @@ class F5Client:
         # Retrieve a copy of the running config if cache is empty
         if getsize(self.cache_config) == 0:
             self.fetch()
-        self.top_objs=self.parse_conf_obj()
+        self.top_objs=self.parse_conf_file(self.cache_config)
         print("Loading complete")
 
     # function build remote ssh connection
@@ -130,12 +130,12 @@ class F5Client:
 
     # function parse the running configuration from the cache
     #  return a two-dimensional dictionary data structure for further usage
-    def parse_conf_obj(self):
+    def parse_conf_file(self, f5_config_file):
         try:
             if self.verbose:
                 print("Parsing the f5 running configurations ... ")
             confs=[]
-            with open(self.cache_config,'r') as fd:
+            with open(f5_config_file,'r') as fd:
                 confs=list(fd)
             fd.close()
             top_objs={}

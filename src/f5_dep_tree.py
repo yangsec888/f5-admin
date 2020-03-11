@@ -56,7 +56,7 @@ class F5DepTree(F5Client):
         # Retrieve a copy of the running config if cache is empty
         if getsize(self.cache_config) == 0:
             self.fetch()
-        self.top_objs=self.parse_conf_obj()
+        self.top_objs=self.parse_conf_file(self.cache_config)
         self.dep_tree = self.build_dep_tree()
         print("Loading complete")
 

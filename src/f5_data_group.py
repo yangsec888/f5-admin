@@ -38,7 +38,7 @@ class F5DataGroup(F5Client):
         # Retrieve a copy of the running config if cache is empty
         if os.path.getsize(self.cache_config) == 0:
             self.fetch()
-        self.top_objs=self.parse_conf_obj()
+        self.top_objs=self.parse_conf_file(self.cache_config)
         self.load_dgs(self.node)
         print("Loading complete")
 
