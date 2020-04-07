@@ -1,6 +1,8 @@
 include *.txt *.py *.sh *.md *.png
 graft src
 graft tests
+graft images
 prune dist
 prune build
 prune docs
+prune conf

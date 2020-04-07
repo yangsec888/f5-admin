@@ -32,7 +32,7 @@ parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Defaul
 parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
 parser.add_argument('-s','--show', help='(Optional) Parse ASM XML policy file into plain txt structure',required=False)
 parser.add_argument('-l','--list', help='(Optional) List of known ASM XML files',action='store_true', default=False,required=False)
-parser.add_argument('-r','--refresh',help='(Optional) Refresh the ASM policy XML files in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-r','--refresh',help='(Optional) Refresh the ASM policy XML file(s) in the local cache directory; expect either one "policy name" or "all"', required=False)
 parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
 args = parser.parse_args()
 
@@ -53,10 +53,10 @@ if __name__ == '__main__':
 
     # Optional: list of current F5 cache file
     if args.list:
-        print("A list of F5 ASM XML policy file under the cache directory: ")
         with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
             my_f5.load(args.node)
             cache_dirs = [d for d in listdir(my_f5.cache_asm_dir) if isdir(join(my_f5.cache_asm_dir, d))]
+            print("A list of F5 ASM XML policy file under the cache directory: \n")
             for d in cache_dirs:
                 print(d)
         exit(1)
@@ -66,16 +66,21 @@ if __name__ == '__main__':
         my_f5.load(args.node)
 
         # (optional) Refetch the running configuration
-        if args.refresh:
+        if args.refresh == "all":
             for x in my_f5.asm_list:
                 my_f5.fetch_asm_policy(x)
             exit(0)
+        elif isfile(join(my_f5.cache_asm_dir, args.refresh, args.refresh+".xml")):
+            my_f5.fetch_asm_policy(args.refresh)
+            exit(0)
+        else:
+            print("Error asm policy file can not be found: ", args.refresh)
 
         if args.show:
             if isfile(args.show):
                 file = args.show
-            elif isfile(join(my_f5.cache_asm_dir, args.show)):
-                file = join(my_f5.cache_asm_dir, args.show)
+            elif isfile(join(my_f5.cache_asm_dir, args.show, args.show+".xml")):
+                file = join(my_f5.cache_asm_dir, args.show, args.show+".xml")
             else:
                 print("Error file can not be found: ", args.show)
                 exit(1)

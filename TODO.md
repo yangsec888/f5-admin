@@ -10,5 +10,5 @@ Some of the nice features I can think of are listed below. If you have any other
 * Upgrade to Python 3 - Done
 * More unit tests - Done
 * Implement [F5 Object Dependency Tree Resolving algorithm](/TREE.md) - Done
-* Web interface for the common utilities
-* TBD
+* Web interface for the common utilities - TBD
+* Others - TBD
