@@ -4,6 +4,7 @@
 *.zip
 
 # no configuration data
+conf/
 /src/conf/
 /src/old_conf/
 /src/inc/

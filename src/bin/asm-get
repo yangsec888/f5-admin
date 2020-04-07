@@ -22,7 +22,7 @@ import sys
 import datetime
 import xmltodict
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 from f5_admin.util import *
 
 # command argument switch setup
@@ -56,9 +56,9 @@ if __name__ == '__main__':
         print("A list of F5 ASM XML policy file under the cache directory: ")
         with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
             my_f5.load(args.node)
-            cache_dirs = [f for f in listdir(my_f5.cache_asm_dir) if isfile(join(my_f5.cache_asm_dir, f))]
-            for f in cache_dirs:
-                print(f)
+            cache_dirs = [d for d in listdir(my_f5.cache_asm_dir) if isdir(join(my_f5.cache_asm_dir, d))]
+            for d in cache_dirs:
+                print(d)
         exit(1)
 
     # Optional, parse ASM xml policy file into plain txt
