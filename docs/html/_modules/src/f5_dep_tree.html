@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>src.f5_dep_tree &#8212; F5 Admin API 1.2.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.f5_dep_tree</h1><div class="highlight"><pre>
+<span></span>
+<span class="c1">################################################################################</span>
+<span class="c1">#  Python API to manipulate the remote F5 box running configuration</span>
+<span class="c1">#    via SSH port 22 as privileged user</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Sam Li, yangsec888@gmail.com, x.x.1972</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+<span class="kn">from</span> <span class="nn">f5_admin</span> <span class="kn">import</span> <span class="n">F5Client</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">unlink</span><span class="p">,</span><span class="n">symlink</span><span class="p">,</span><span class="n">mkdir</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">isfile</span><span class="p">,</span><span class="n">isdir</span><span class="p">,</span><span class="n">join</span><span class="p">,</span><span class="n">dirname</span><span class="p">,</span><span class="n">realpath</span><span class="p">,</span><span class="n">getsize</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="c1"># Dependency tree node data structure</span>
+<span class="c1"># Refer to the article for reference: https://www.electricmonk.nl/log/2008/08/07/dependency-resolving-algorithm/</span>
+<div class="viewcode-block" id="Node"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.Node">[docs]</a><span class="k">class</span> <span class="nc">Node</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">edges</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="Node.addEdge"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.Node.addEdge">[docs]</a>    <span class="k">def</span> <span class="nf">addEdge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">node_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span></div></div>
+
+<span class="c1"># Class to implement F5 Configuration Object Dependency Resovling Algorithm</span>
+<div class="viewcode-block" id="F5DepTree"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree">[docs]</a><span class="k">class</span> <span class="nc">F5DepTree</span><span class="p">(</span><span class="n">F5Client</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credential</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+        <span class="n">F5Client</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credential</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+        <span class="c1">#self.load(self, node)</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="c1">#os.unlink(file)</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span>
+
+    <span class="c1"># Overloading F5Client &#39;load&#39; method</span>
+<div class="viewcode-block" id="F5DepTree.load"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_hostname</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>        <span class="c1"># F5 node validation check</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">):</span>
+            <span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading cache_config: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="c1"># Retrieve a copy of the running config if cache is non-exist</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="c1"># Retrieve a copy of the running config if cache is empty</span>
+        <span class="k">if</span> <span class="n">getsize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parse_conf_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dep_tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_dep_tree</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading complete&quot;</span><span class="p">)</span></div>
+
+    <span class="c1"># Build the dependency tree based on the existing F5 configuration objects</span>
+<div class="viewcode-block" id="F5DepTree.build_dep_tree"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.build_dep_tree">[docs]</a>    <span class="k">def</span> <span class="nf">build_dep_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total object count: &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span>
+        <span class="c1"># first, use dictionary comprehension to create the basic tree data structure</span>
+        <span class="n">dep_tree</span> <span class="o">=</span> <span class="p">{</span> <span class="n">key</span><span class="p">:</span><span class="n">Node</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="p">}</span>
+        <span class="c1"># secondary, walk through all nodes in the basic tree structure one by one, and build node relationships / tree branches</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">dep_tree</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_tree_branches</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dep_tree</span></div>
+
+    <span class="c1"># Build tree branches / node relationships</span>
+<div class="viewcode-block" id="F5DepTree.build_tree_branches"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.build_tree_branches">[docs]</a>    <span class="k">def</span> <span class="nf">build_tree_branches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;ltm virtual &quot;</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>                  <span class="c1"># case for load balancer nodes &#39;VIPs&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_tree_branches_vip</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;security firewall policy &quot;</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>   <span class="c1"># case for AFM firewall policy</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_tree_branches_afm_policy</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;security firewall rule-list &quot;</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="c1"># case for AFM rule-list</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_tree_branches_afm_rules</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># parse vip single configuration object, then extract and build the relationships</span>
+<div class="viewcode-block" id="F5DepTree.build_tree_branches_vip"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.build_tree_branches_vip">[docs]</a>    <span class="k">def</span> <span class="nf">build_tree_branches_vip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="s2">&quot;pool &quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependendant pool</span>
+                <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;ltm pool &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;ip-intelligence-policy &quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>    <span class="c1"># add dependendant ip-intel policy</span>
+                <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security ip-intelligence policy &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;security-log-profiles {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant security log profile</span>
+                <span class="n">security_log_profiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;security-log-profiles {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">security_log_profiles</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security log profile &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;fw-enforced-policy &quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant fw-policy</span>
+                <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security firewall policy &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;rules {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant irule</span>
+                <span class="n">irules</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;rules {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">irules</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;ltm rule &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;policies {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant asm policy</span>
+                <span class="n">policies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;policies {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">policies</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;ltm policy &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;vlans {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant vlans</span>
+                <span class="n">vlans</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;vlans {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">vlans</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;net vlan &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;profiles {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span> <span class="c1"># add dependendant profiles</span>
+                <span class="n">profiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_two_indention</span><span class="p">(</span><span class="s2">&quot;profiles {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found dependendant ltm profiles: &quot;</span><span class="p">,</span> <span class="n">profiles</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">profiles</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ltm_profile_lookup</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Add dependendant ltm profile: &quot;</span><span class="p">,</span> <span class="n">pool_node_name</span><span class="p">)</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># parse afm single configuration object, then extract and build the relationships</span>
+<div class="viewcode-block" id="F5DepTree.build_tree_branches_afm_policy"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.build_tree_branches_afm_policy">[docs]</a>    <span class="k">def</span> <span class="nf">build_tree_branches_afm_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="s2">&quot; rule-list &quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>       <span class="c1"># add dependant rule list</span>
+                <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security firewall rule-list &quot;</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;address-lists {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependant address-lists</span>
+                <span class="n">addr_lists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;address-lists {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addr_lists</span><span class="p">:</span>
+                    <span class="n">pool_node_name_1</span> <span class="o">=</span> <span class="s2">&quot;security firewall address-list &quot;</span> <span class="o">+</span> <span class="n">addr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">pool_node_name_2</span> <span class="o">=</span> <span class="s2">&quot;security shared-objects address-list &quot;</span> <span class="o">+</span> <span class="n">addr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name_1</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name_1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">pool_node_name_2</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name_2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;fqdns {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>          <span class="c1"># add dependant fqdn list</span>
+                <span class="n">fqdns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;fqdns {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">fqdn</span> <span class="ow">in</span> <span class="n">fqdns</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security firewall fqdn-entity &quot;</span> <span class="o">+</span> <span class="n">fqdn</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;port-lists {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependant port-lists</span>
+                <span class="n">port_lists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;port-lists {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">port_lists</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security firewall port-list &quot;</span> <span class="o">+</span> <span class="n">port</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;vlans {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependant vlans</span>
+                <span class="n">vlan_lists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;vlans {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">vlan</span> <span class="ow">in</span> <span class="n">vlan_lists</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;net vlan &quot;</span> <span class="o">+</span> <span class="n">vlan</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Parse afm single configuration object such as &#39;security firewall rule-list NetIQ-PRD-IDP-ADM &#39;,</span>
+    <span class="c1"># then extract the content and build the relationships</span>
+<div class="viewcode-block" id="F5DepTree.build_tree_branches_afm_rules"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.build_tree_branches_afm_rules">[docs]</a>    <span class="k">def</span> <span class="nf">build_tree_branches_afm_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="s2">&quot;address-lists {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependendant address-lists</span>
+                <span class="n">addr_lists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;address-lists {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addr_lists</span><span class="p">:</span>
+                    <span class="n">pool_node_name_1</span> <span class="o">=</span> <span class="s2">&quot;security firewall address-list &quot;</span> <span class="o">+</span> <span class="n">addr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">pool_node_name_2</span> <span class="o">=</span> <span class="s2">&quot;security shared-objects address-list &quot;</span> <span class="o">+</span> <span class="n">addr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name_1</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name_1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">pool_node_name_2</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name_2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;port-lists {&quot;</span> <span class="ow">in</span> <span class="n">entry</span><span class="p">:</span>   <span class="c1"># add dependendant port-lists</span>
+                <span class="n">port_lists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_obj_one_indention</span><span class="p">(</span><span class="s2">&quot;port-lists {&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">port_lists</span><span class="p">:</span>
+                    <span class="n">pool_node_name</span> <span class="o">=</span> <span class="s2">&quot;security firewall port-list &quot;</span> <span class="o">+</span> <span class="n">port</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">pool_node_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">addEdge</span><span class="p">(</span><span class="n">pool_node_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Parse a F5 Single Configuration Object (one level curly bracket indention ); then return element list.</span>
+    <span class="c1"># example input:</span>
+    <span class="c1"># [&#39;    destination 10.107.221.128:http&#39;, &#39;    ip-intelligence-policy ip-intelligence&#39;, &#39;    ip-protocol tcp&#39;, &#39;    mask 255.255.255.255&#39;, &#39;    profiles {&#39;, &#39;        http-x-forwarded-for { }&#39;, &#39;        tcp { }&#39;, &#39;    }&#39;, &#39;    rules {&#39;, &#39;        okta-http-https&#39;, &#39;    }&#39;, &#39;    security-log-profiles {&#39;, &#39;        splunk-logging&#39;, &#39;        splunk-logging_local&#39;, &#39;    }&#39;, &#39;    source 0.0.0.0/0&#39;, &#39;    translate-address enabled&#39;, &#39;    translate-port enabled&#39;, &#39;    vlans {&#39;, &#39;        dev_int_vlan703&#39;, &#39;        dev_web_srvr_422&#39;, &#39;    }&#39;, &#39;    vlans-enabled&#39;, &#39;    vs-index 196&#39;]</span>
+    <span class="c1">#</span>
+    <span class="c1"># example output: [&#39;splunk-logging&#39;, &#39;splunk-logging_local&#39;]</span>
+<div class="viewcode-block" id="F5DepTree.parse_obj_one_indention"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.parse_obj_one_indention">[docs]</a>    <span class="k">def</span> <span class="nf">parse_obj_one_indention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern_string</span><span class="p">,</span> <span class="n">input_obj</span><span class="p">):</span>
+        <span class="n">p_empty</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^(\w+\s)+.*\{\s\}$&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match empty configuration object</span>
+        <span class="n">p_end</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\s+}$&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match end of configuration object</span>
+        <span class="n">recording</span><span class="o">=</span><span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+           <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing the F5 Single Configuration Object within one indention: &quot;</span><span class="p">,</span> <span class="n">pattern_string</span><span class="p">,</span> <span class="n">input_obj</span><span class="p">)</span>
+        <span class="n">output_obj</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">input_obj</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing line:&quot;</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">pattern_string</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+                <span class="n">recording</span><span class="o">=</span><span class="kc">True</span>
+                <span class="k">if</span> <span class="n">p_empty</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">recording</span> <span class="ow">and</span> <span class="n">p_end</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="n">recording</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Ending found: &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="n">recording</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adding object: &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+                <span class="n">output_obj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">continue</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;My output objects: &quot;</span><span class="p">,</span> <span class="n">output_obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_obj</span></div>
+
+    <span class="c1"># Parse a F5 Single Configuration Object (two level curly bracket indention ); then return element list.</span>
+    <span class="c1"># Example input: [&#39;    destination 10.107.224.66:webcache&#39;, &#39;    disabled&#39;, &#39;    ip-intelligence-policy ip-intelligence&#39;, &#39;    ip-protocol tcp&#39;, &#39;    mask 255.255.255.255&#39;, &#39;    pool app-apidev-api-services&#39;, &#39;    profiles {&#39;, &#39;        http-x-forwarded-for { }&#39;, &#39;        tcp { }&#39;, &#39;    }&#39;, &#39;    security-log-profiles {&#39;, &#39;        splunk-logging&#39;, &#39;        splunk-logging_local&#39;, &#39;    }&#39;, &#39;    source 0.0.0.0/0&#39;, &#39;    translate-address enabled&#39;, &#39;    translate-port enabled&#39;, &#39;    vlans {&#39;, &#39;        dev_int_vlan703&#39;, &#39;    }&#39;, &#39;    vlans-enabled&#39;, &#39;    vs-index 43&#39;]</span>
+    <span class="c1"># Example output: [&#39;http-x-forwarded-for&#39;,&#39;tcp&#39;]</span>
+    <span class="c1">#</span>
+    <span class="c1"># Note 10232019, SL:</span>
+    <span class="c1">#  The reverse algo is good for now. In the future it might need additional work to check the</span>
+    <span class="c1">#  inner indention</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="F5DepTree.parse_obj_two_indention"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.parse_obj_two_indention">[docs]</a>    <span class="k">def</span> <span class="nf">parse_obj_two_indention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern_string</span><span class="p">,</span> <span class="n">input_obj</span><span class="p">):</span>
+        <span class="n">p_empty</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^(\w+\s)+.*\{\s\}$&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match empty configuration object</span>
+        <span class="n">p_end</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\s+}$&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match end of configuration object</span>
+        <span class="n">recording</span><span class="o">=</span><span class="kc">False</span>
+        <span class="n">recording_obj</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+           <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing the F5 Single Configuration Object within two indention: &quot;</span><span class="p">,</span> <span class="n">input_obj</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">input_obj</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing line:&quot;</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">pattern_string</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+                <span class="n">recording</span><span class="o">=</span><span class="kc">True</span>
+                <span class="n">recording_obj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">recording</span><span class="p">:</span>
+                <span class="n">recording_obj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">p_end</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_bracket</span><span class="p">(</span><span class="n">recording_obj</span><span class="p">,</span> <span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span> <span class="c1"># skip</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_bracket</span><span class="p">(</span><span class="n">recording_obj</span><span class="p">,</span> <span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_bracket</span><span class="p">(</span><span class="n">recording_obj</span><span class="p">,</span> <span class="s2">&quot;}&quot;</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">recording</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="k">break</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Recording object within two indention: &quot;</span><span class="p">,</span> <span class="n">recording_obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recording_obj</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">output_obj</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">recording_obj</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing single configuration object within two indent output: &quot;</span><span class="p">,</span> <span class="n">output_obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_obj</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>      <span class="c1"># Trim off the enclosure</span>
+            <span class="n">output_obj</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">output_obj</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+    <span class="c1"># ltm profile lookup method</span>
+    <span class="c1"># example input: &#39;http-x-forwarded-for&#39;, &#39;tcp&#39;</span>
+    <span class="c1"># example output:</span>
+<div class="viewcode-block" id="F5DepTree.ltm_profile_lookup"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.ltm_profile_lookup">[docs]</a>    <span class="k">def</span> <span class="nf">ltm_profile_lookup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ltm profile lookup for: &quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="s2">&quot;ltm profile&quot;</span> <span class="ow">in</span> <span class="n">item</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">item</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Walking through the F5 configuration dependency tree data structure</span>
+<div class="viewcode-block" id="F5DepTree.dep_resolve"><a class="viewcode-back" href="../../src.html#src.f5_dep_tree.F5DepTree.dep_resolve">[docs]</a>    <span class="k">def</span> <span class="nf">dep_resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;resolved&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">():</span>
+                <span class="n">resolved</span><span class="o">=</span><span class="p">{}</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Walking through node name: &quot;</span><span class="p">,</span> <span class="n">node_name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_tree</span><span class="p">[</span><span class="n">node_name</span><span class="p">]</span><span class="o">.</span><span class="n">edges</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">resolved</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="n">resolved</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dep_resolve</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Circular reference detected: </span><span class="si">%s</span><span class="s1"> -&gt; </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dep_tree</span><span class="p">[</span><span class="n">node_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_tree</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;F5 configuration dependency resolving failure:&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Unexpected error:&quot;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">resolved</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">resolved</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">F5 Admin API</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Sam Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

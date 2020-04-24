@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>f5_admin.f5_asm &#8212; F5 Admin API 1.2.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for f5_admin.f5_asm</h1><div class="highlight"><pre>
+<span></span>
+<span class="c1">################################################################################</span>
+<span class="c1">#  Python API to manipulate the remote F5 box running configuration</span>
+<span class="c1">#    via SSH port 22 as privileged user</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Sam Li, yangsec888@gmail.com, x.x.1972</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+
+<span class="kn">from</span> <span class="nn">f5_admin</span> <span class="kn">import</span> <span class="n">F5Client</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">unlink</span><span class="p">,</span><span class="n">symlink</span><span class="p">,</span><span class="n">mkdir</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">isfile</span><span class="p">,</span><span class="n">isdir</span><span class="p">,</span><span class="n">join</span><span class="p">,</span><span class="n">dirname</span><span class="p">,</span><span class="n">realpath</span><span class="p">,</span><span class="n">getsize</span>
+<span class="kn">import</span> <span class="nn">xmltodict</span>
+<span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
+
+
+<div class="viewcode-block" id="F5Asm"><a class="viewcode-back" href="../../src.html#src.F5Asm">[docs]</a><span class="k">class</span> <span class="nc">F5Asm</span><span class="p">(</span><span class="n">F5Client</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credential</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+        <span class="n">F5Client</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credential</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="c1">#os.unlink(file)</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span>
+
+<div class="viewcode-block" id="F5Asm.load"><a class="viewcode-back" href="../../src.html#src.F5Asm.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">node</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="n">node</span><span class="p">):</span>
+            <span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading cache_config: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="c1"># Retrieve a copy of the f5 running config if cache is non-exist</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="c1"># Retrieve a copy of the running config if cache is empty</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parse_conf_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_asm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading complete&quot;</span><span class="p">)</span></div>
+
+    <span class="c1"># Load asm stuffs here</span>
+<div class="viewcode-block" id="F5Asm.load_asm"><a class="viewcode-back" href="../../src.html#src.F5Asm.load_asm">[docs]</a>    <span class="k">def</span> <span class="nf">load_asm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">node</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asm_objs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filter_f5_objs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">,</span><span class="s2">&quot;asm policy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asm_list</span> <span class="o">=</span> <span class="p">[</span> <span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asm_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_asm_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;/asm/&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_asm_dir</span><span class="p">):</span>
+            <span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_asm_dir</span><span class="p">)</span>
+        <span class="c1"># proprietary data structure to hold dg info in memory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_asm_objs</span><span class="p">()</span></div>
+
+    <span class="c1"># Function to Initialize asm data structure: asm[policy][key][value]</span>
+<div class="viewcode-block" id="F5Asm.load_asm_objs"><a class="viewcode-back" href="../../src.html#src.F5Asm.load_asm_objs">[docs]</a>    <span class="k">def</span> <span class="nf">load_asm_objs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading asm policy elements into memory on F5 node: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asms</span><span class="o">=</span><span class="p">{}</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">asm_objs</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">asm_name</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">cache_asm_obj_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_asm_dir</span> <span class="o">+</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="n">cache_asm_obj_dir</span><span class="p">):</span>
+                <span class="n">mkdir</span><span class="p">(</span><span class="n">cache_asm_obj_dir</span><span class="p">)</span>
+            <span class="n">cache_asm_file</span> <span class="o">=</span> <span class="n">cache_asm_obj_dir</span> <span class="o">+</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot;.xml&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_file</span><span class="p">(</span><span class="n">cache_asm_file</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retrieve the asm policy file: &quot;</span><span class="p">,</span> <span class="n">asm_name</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fetch_asm_policy</span><span class="p">(</span><span class="n">asm_name</span><span class="p">)</span></div>
+            <span class="c1">#else:</span>
+                <span class="c1">#print &quot;&quot;   # TBD - xml parser encounter invalid token</span>
+                <span class="c1">#my_asms=self.parse_asm_policy(cache_asm_file)</span>
+                <span class="c1">#if my_asms != None:</span>
+                <span class="c1">#    self.asms[asm_name]=my_asms</span>
+
+    <span class="c1"># function to fetch a copy of the running asm policy in xml format</span>
+<div class="viewcode-block" id="F5Asm.fetch_asm_policy"><a class="viewcode-back" href="../../src.html#src.F5Asm.fetch_asm_policy">[docs]</a>    <span class="k">def</span> <span class="nf">fetch_asm_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">asm_name</span><span class="p">):</span>
+        <span class="c1">#try:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fetch the ASM policy on: &quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_connect</span><span class="p">()</span>
+            <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m</span><span class="si">%d</span><span class="s1">%Y&#39;</span><span class="p">)</span>
+            <span class="n">cache_asm_obj_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_asm_dir</span> <span class="o">+</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="n">cache_asm_obj_dir</span><span class="p">):</span>
+                <span class="n">mkdir</span><span class="p">(</span><span class="n">cache_asm_obj_dir</span><span class="p">)</span>
+            <span class="n">cache_asm_file</span> <span class="o">=</span> <span class="n">cache_asm_obj_dir</span> <span class="o">+</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot;.xml&quot;</span>
+            <span class="n">policy_file_name</span> <span class="o">=</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">today</span> <span class="o">+</span> <span class="s2">&quot;.xml&quot;</span>
+            <span class="n">remote_file</span> <span class="o">=</span> <span class="s2">&quot;/var/tmp/&quot;</span> <span class="o">+</span> <span class="n">policy_file_name</span>
+            <span class="n">local_file</span> <span class="o">=</span> <span class="n">cache_asm_obj_dir</span> <span class="o">+</span> <span class="n">policy_file_name</span>
+            <span class="n">cmd_01</span> <span class="o">=</span> <span class="s2">&quot;rm -rf &quot;</span> <span class="o">+</span> <span class="n">remote_file</span>
+            <span class="n">cmd_02</span> <span class="o">=</span> <span class="s2">&quot;tmsh save asm policy &quot;</span> <span class="o">+</span> <span class="n">asm_name</span> <span class="o">+</span> <span class="s2">&quot; xml-file &quot;</span> <span class="o">+</span> <span class="n">remote_file</span>
+            <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cmd_01</span><span class="p">,</span><span class="n">cmd_02</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span><span class="n">cmd</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="c1"># Retrieve the remote asm policy to the asm folder</span>
+            <span class="n">cmd_03</span> <span class="o">=</span> <span class="s2">&quot;sshpass -p &quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s1">&#39;user_pass&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot; scp -o &#39;StrictHostKeyChecking no&#39; -q &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s1">&#39;user_name&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;@&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;:&quot;</span> <span class="o">+</span> <span class="n">remote_file</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">local_file</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Run command: &quot;</span><span class="p">,</span> <span class="n">cmd_03</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd_03</span><span class="p">)</span>  <span class="c1"># using scp instead of cat, ßbecause policy file contain non-utf8 chars that mess up codec reading stdout</span>
+            <span class="c1"># clean up</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span><span class="n">cmd_01</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="c1"># remove then update the soft link</span>
+            <span class="k">if</span> <span class="n">isfile</span><span class="p">(</span><span class="n">cache_asm_file</span><span class="p">):</span>
+                <span class="n">unlink</span><span class="p">(</span><span class="n">cache_asm_file</span><span class="p">)</span>
+            <span class="n">symlink</span><span class="p">(</span><span class="n">local_file</span><span class="p">,</span> <span class="n">cache_asm_file</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;F5 asm policy is saved to file: &quot;</span><span class="p">,</span> <span class="n">cache_asm_file</span><span class="p">)</span></div>
+        <span class="c1">#except Exception as e:</span>
+        <span class="c1">#    print(&#39;Fetch ASM Policy Failed:&#39;)</span>
+        <span class="c1">#    print(e)</span>
+
+    <span class="c1"># Python: Loop through all nested key-value pairs created by xmltodict,</span>
+    <span class="c1">#   credit to Tadhg McDonald-Jensen in stackoverflow</span>
+<div class="viewcode-block" id="F5Asm.traverse"><a class="viewcode-back" href="../../src.html#src.F5Asm.traverse">[docs]</a>    <span class="k">def</span> <span class="nf">traverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">prev_path</span> <span class="o">=</span> <span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="n">path_repr</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">[</span><span class="si">{!r}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="nb">dict</span><span class="p">):</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="nb">list</span><span class="p">):</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">prev_path</span><span class="p">,</span><span class="n">obj</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traverse</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">path_repr</span><span class="p">(</span><span class="n">prev_path</span><span class="p">,</span><span class="n">k</span><span class="p">),</span> <span class="n">path_repr</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">data</span></div>
+
+    <span class="c1"># function parse the asm policy in xml format</span>
+    <span class="c1"># return a dictionary object for further usage</span>
+<div class="viewcode-block" id="F5Asm.parse_asm_policy"><a class="viewcode-back" href="../../src.html#src.F5Asm.parse_asm_policy">[docs]</a>    <span class="k">def</span> <span class="nf">parse_asm_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">asm_xml_file</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing the F5 ASM policy ... &quot;</span><span class="p">,</span> <span class="n">asm_xml_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_file</span><span class="p">(</span><span class="n">asm_xml_file</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error file can not be found: &quot;</span><span class="p">,</span> <span class="n">asm_xml_file</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">asm_xml_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+            <span class="n">doc</span> <span class="o">=</span> <span class="n">xmltodict</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">fd</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="c1">#print &quot;Print out the ASM policy contents in key value pair below: &quot;</span>
+        <span class="n">policies</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">asm_xml_file</span><span class="p">:</span>
+            <span class="n">asm_xml_file</span><span class="o">=</span><span class="n">asm_xml_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># remove the unix path</span>
+        <span class="k">for</span> <span class="n">path</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traverse</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="n">prev_path</span> <span class="o">=</span> <span class="n">asm_xml_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">policies</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="n">path</span><span class="p">:</span><span class="n">value</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">policies</span></div>
+
+    <span class="c1"># Search XML file and return first element match</span>
+<div class="viewcode-block" id="F5Asm.xml_find"><a class="viewcode-back" href="../../src.html#src.F5Asm.xml_find">[docs]</a>    <span class="k">def</span> <span class="nf">xml_find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element_name</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s1">&#39;xml&#39;</span><span class="p">)</span>
+            <span class="n">pl</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">element_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">pl</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">text</span>
+        <span class="k">return</span> <span class="n">name</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">F5 Admin API</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Sam Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

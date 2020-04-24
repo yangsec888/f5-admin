@@ -1,0 +1,453 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>src.f5_client &#8212; F5 Admin API 1.2.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.f5_client</h1><div class="highlight"><pre>
+<span></span>
+<span class="c1">################################################################################</span>
+<span class="c1">#  Python API to manipulate the remote F5 box running configuration</span>
+<span class="c1">#    via SSH port 22 as privileged user</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Sam Li, yangsec888@gmail.com, x.x.1972</span>
+<span class="c1">#</span>
+<span class="c1">################################################################################</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">paramiko</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">unlink</span><span class="p">,</span><span class="n">symlink</span><span class="p">,</span><span class="n">mkdir</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">isfile</span><span class="p">,</span><span class="n">isdir</span><span class="p">,</span><span class="n">join</span><span class="p">,</span><span class="n">dirname</span><span class="p">,</span><span class="n">realpath</span><span class="p">,</span><span class="n">getsize</span>
+
+<div class="viewcode-block" id="F5Client"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client">[docs]</a><span class="k">class</span> <span class="nc">F5Client</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credential</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">credential</span> <span class="o">=</span> <span class="n">credential</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="mi">22</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">=</span> <span class="n">dirname</span><span class="p">(</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/conf/&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span><span class="p">):</span>
+            <span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="c1">#os.unlink(file)</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span>
+
+<div class="viewcode-block" id="F5Client.load"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_hostname</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>        <span class="c1"># F5 node validation check</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">):</span>
+            <span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading cache_config: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="c1"># Retrieve a copy of the running config if cache is non-exist</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="c1"># Retrieve a copy of the running config if cache is empty</span>
+        <span class="k">if</span> <span class="n">getsize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parse_conf_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading complete&quot;</span><span class="p">)</span></div>
+
+    <span class="c1"># function build remote ssh connection</span>
+<div class="viewcode-block" id="F5Client.ssh_connect"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.ssh_connect">[docs]</a>    <span class="k">def</span> <span class="nf">ssh_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Setting up remote SSH session to host:&quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">user_name</span><span class="o">=</span><span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please enter the F5 user name: &quot;</span><span class="p">)</span>
+                <span class="n">password</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s2">&quot;Please enter the F5 password: &quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">credential</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;user_name&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">user_name</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                    <span class="s2">&quot;user_pass&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">password</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="p">}</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s2">&quot;user_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">user_name</span><span class="o">=</span><span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please enter the F5 user name: &quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s2">&quot;user_name&quot;</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">user_name</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s2">&quot;user_pass&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">password</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s2">&quot;Please enter the F5 password: &quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s2">&quot;user_pass&quot;</span><span class="p">]</span> <span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">password</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">SSHClient</span><span class="p">()</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">set_missing_host_key_policy</span><span class="p">(</span><span class="n">paramiko</span><span class="o">.</span><span class="n">AutoAddPolicy</span><span class="p">())</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s1">&#39;user_name&#39;</span><span class="p">],</span> <span class="n">password</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s1">&#39;user_pass&#39;</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">client</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SSH Connection Failed:&quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Trace Error:&quot;</span><span class="p">,</span><span class="n">e</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Terminate running program&quot;</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+    <span class="c1"># function remote exec ssh command</span>
+<div class="viewcode-block" id="F5Client.ssh_command"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.ssh_command">[docs]</a>    <span class="k">def</span> <span class="nf">ssh_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ssh_connect</span><span class="p">,</span><span class="n">command_string</span><span class="p">,</span><span class="n">sudo_pass</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Execution on the remote host: &quot;</span><span class="p">,</span><span class="n">command_string</span><span class="p">)</span>
+            <span class="c1"># request the interactive shell then swtich the current channel to it</span>
+            <span class="n">ssh_connect</span><span class="o">.</span><span class="n">invoke_shell</span><span class="p">()</span>
+            <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh_connect</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">command_string</span><span class="p">)</span>
+            <span class="n">cmd_out_list</span><span class="o">=</span><span class="n">stdout</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+            <span class="n">cmd_err_list</span><span class="o">=</span><span class="n">stderr</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">cmd_out_list</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;stderr:&quot;</span><span class="p">,</span><span class="n">cmd_err_list</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Command execution complete.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd_out_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">cmd_out_list</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmd_err_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">cmd_err_list</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[]</span>
+            <span class="c1">#ssh_connect.close()  # keep connection open for the next command</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;SSH Command Failed:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+    <span class="c1"># function to fetch a copy of the running configuration file</span>
+<div class="viewcode-block" id="F5Client.fetch"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.fetch">[docs]</a>    <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fetch the running configuration on: &quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_connect</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">credential</span><span class="p">[</span><span class="s2">&quot;user_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;root&quot;</span><span class="p">:</span>
+                <span class="n">f5_conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span><span class="s2">&quot;tmsh list&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">f5_conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m</span><span class="si">%d</span><span class="s1">%Y&#39;</span><span class="p">)</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">today</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f5_conf</span><span class="p">:</span>
+                    <span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="c1"># remove then update the soft link</span>
+            <span class="k">if</span> <span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">):</span>
+                <span class="n">unlink</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+            <span class="n">symlink</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;F5 running configuration is saved to file: &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_config</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Fetch Configuration Failed:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+    <span class="c1"># function parse the running configuration from the cache</span>
+    <span class="c1">#  return a two-dimensional dictionary data structure for further usage</span>
+<div class="viewcode-block" id="F5Client.parse_conf_file"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.parse_conf_file">[docs]</a>    <span class="k">def</span> <span class="nf">parse_conf_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f5_config_file</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing the f5 running configurations ... &quot;</span><span class="p">)</span>
+            <span class="n">confs</span><span class="o">=</span><span class="p">[]</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f5_config_file</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+                <span class="n">confs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>
+            <span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">top_objs</span><span class="o">=</span><span class="p">{}</span>
+            <span class="n">recording</span><span class="o">=</span><span class="kc">False</span>
+            <span class="n">p_empty</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^(\w+\s)+.*\{\s\}$&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match empty configuration object</span>
+            <span class="n">p_start</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^(\w+\s)+.*\{$&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match start of configuration object</span>
+            <span class="n">p_end</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\}$&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span> <span class="c1"># match end of configuration object</span>
+            <span class="n">obj</span><span class="o">=</span><span class="p">[]</span> <span class="c1"># preset f5 object to empty</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">confs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing line:&quot;</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">p_empty</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="n">obj_name</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;{&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+                    <span class="n">obj</span><span class="o">=</span><span class="p">[]</span>
+                    <span class="n">top_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj_name</span><span class="p">:</span> <span class="n">obj</span><span class="p">})</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">p_end</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="c1"># fixing &#39;ltm rule&#39; obj has two closing bracket &#39;^}&#39;</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_bracket</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_bracket</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="s2">&quot;}&quot;</span><span class="p">):</span>
+                        <span class="n">obj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+                        <span class="k">continue</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">top_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj_name</span><span class="p">:</span> <span class="n">obj</span><span class="p">})</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="p">[]</span>
+                        <span class="n">recording</span><span class="o">=</span><span class="kc">False</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Next object ...&quot;</span><span class="p">)</span>
+                        <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">p_start</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                    <span class="n">recording</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="c1">#print x</span>
+                <span class="k">if</span> <span class="n">recording</span><span class="p">:</span>
+                    <span class="c1"># 09122018, fix bug where in irules the indention is off for object start pattern.</span>
+                    <span class="k">if</span> <span class="n">p_start</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>     <span class="c1"># header line</span>
+                        <span class="n">obj_name</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;{&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Top object name: &quot;</span><span class="p">,</span><span class="n">obj_name</span><span class="p">)</span>
+                        <span class="k">continue</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">obj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+                        <span class="k">continue</span>
+                    <span class="c1">#print x</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Parsing done.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">top_objs</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Parsing F5 Running Configurations Failed:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+    <span class="c1"># Simple string filter applied to our top configuration object data structure.</span>
+<div class="viewcode-block" id="F5Client.filter_f5_objs"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.filter_f5_objs">[docs]</a>    <span class="k">def</span> <span class="nf">filter_f5_objs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">objs</span><span class="p">,</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Filtering F5 objects based on string: &quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="n">my_objs</span><span class="o">=</span><span class="p">{}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">val</span> <span class="ow">in</span> <span class="n">objs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Filtering object:&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="n">my_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span><span class="n">val</span><span class="p">})</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Match found: &quot;</span><span class="p">,</span><span class="n">line</span><span class="p">)</span>
+                        <span class="n">my_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span><span class="n">val</span><span class="p">})</span>
+                        <span class="k">break</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Filtering done.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">my_objs</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Filtering F5 Objects Failed:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># RegEx based pattern filter applied to our configuration object data structure.</span>
+<div class="viewcode-block" id="F5Client.pattern_filter_f5_objs"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.pattern_filter_f5_objs">[docs]</a>    <span class="k">def</span> <span class="nf">pattern_filter_f5_objs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">objs</span><span class="p">,</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Filtering F5 objects based on regex pattern: &quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="n">my_objs</span><span class="o">=</span><span class="p">{}</span>
+            <span class="n">prog</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">val</span> <span class="ow">in</span> <span class="n">objs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Filtering object:&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">prog</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                    <span class="n">my_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span><span class="n">val</span><span class="p">})</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">prog</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Match found: &quot;</span><span class="p">,</span><span class="n">line</span><span class="p">)</span>
+                        <span class="n">my_objs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span><span class="n">val</span><span class="p">})</span>
+                        <span class="k">break</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pattern filtering done.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">my_objs</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Pattern filtering F5 Objects Failed:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># print F5 configuration object in the stdout</span>
+<div class="viewcode-block" id="F5Client.print_obj"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.print_obj">[docs]</a>    <span class="k">def</span> <span class="nf">print_obj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">header</span><span class="o">=</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot; {&quot;</span>
+            <span class="n">footer</span><span class="o">=</span><span class="s2">&quot;}&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">footer</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">one_liner</span> <span class="o">=</span> <span class="n">key</span> <span class="o">+</span> <span class="s2">&quot; { }&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">one_liner</span><span class="p">)</span></div>
+
+    <span class="c1"># Write F5 configuration object to output file</span>
+<div class="viewcode-block" id="F5Client.write_obj"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.write_obj">[docs]</a>    <span class="k">def</span> <span class="nf">write_obj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">value</span><span class="p">,</span><span class="n">file</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">header</span><span class="o">=</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot; {&quot;</span>
+                <span class="n">footer</span><span class="o">=</span><span class="s2">&quot;}&quot;</span>
+                <span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">header</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">footer</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">one_liner</span> <span class="o">=</span> <span class="n">key</span> <span class="o">+</span> <span class="s2">&quot; { }&quot;</span>
+                <span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">one_liner</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+    <span class="c1"># Function to extract the &#39;Description&#39; field from the Virtual Server object</span>
+<div class="viewcode-block" id="F5Client.search_desc"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.search_desc">[docs]</a>    <span class="k">def</span> <span class="nf">search_desc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">obj_val</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;    description &#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span></div>
+
+    <span class="c1"># Function to extract VIP destination ip</span>
+<div class="viewcode-block" id="F5Client.search_vip"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.search_vip">[docs]</a>    <span class="k">def</span> <span class="nf">search_vip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">obj_val</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;    destination &#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;destination&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span></div>
+
+    <span class="c1"># Function to extract cert used in clientssl profile object</span>
+<div class="viewcode-block" id="F5Client.search_cert_in_client_ssl_profile"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.search_cert_in_client_ssl_profile">[docs]</a>    <span class="k">def</span> <span class="nf">search_cert_in_client_ssl_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">obj_val</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;    cert &#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;cert&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span></div>
+
+    <span class="c1"># Function to extract the first clientssl profile name from the VIP configuration object</span>
+<div class="viewcode-block" id="F5Client.search_client_ssl"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.search_client_ssl">[docs]</a>    <span class="k">def</span> <span class="nf">search_client_ssl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">obj_val</span><span class="p">):</span>
+        <span class="n">previous_line</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+        <span class="n">prog</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;            context clientside&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prog</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">previous_line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;{&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">previous_line</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span></div>
+
+    <span class="c1"># Function to extract clientsll profile parent name from the VIP configuration object</span>
+<div class="viewcode-block" id="F5Client.search_client_ssl_parent"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.search_client_ssl_parent">[docs]</a>    <span class="k">def</span> <span class="nf">search_client_ssl_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">obj_val</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot; defaults-from&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;defaults-from&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;N/A&quot;</span></div>
+
+    <span class="c1"># Function of bracket char &quot;{&quot;, &quot;}&quot; counter</span>
+<div class="viewcode-block" id="F5Client.count_bracket"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.count_bracket">[docs]</a>    <span class="k">def</span> <span class="nf">count_bracket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_val</span><span class="p">,</span> <span class="n">bracket</span><span class="p">):</span>
+        <span class="n">cnt</span><span class="o">=</span><span class="mi">0</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">bracket</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">M</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">bracket</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">occur</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+                <span class="n">cnt</span> <span class="o">+=</span> <span class="n">occur</span>
+        <span class="k">return</span> <span class="n">cnt</span></div>
+
+    <span class="c1"># Known F5 nodes defined under cache directory</span>
+<div class="viewcode-block" id="F5Client.get_node_list"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.get_node_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_node_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cache_dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span><span class="p">)</span> <span class="k">if</span> <span class="n">isdir</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_base</span><span class="p">,</span> <span class="n">d</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="n">cache_dirs</span></div>
+
+    <span class="c1"># Known F5 node cache file list</span>
+<div class="viewcode-block" id="F5Client.get_cache_file_list"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.get_cache_file_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_cache_file_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cache_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">isfile</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_config_dir</span><span class="p">,</span> <span class="n">f</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="n">cache_files</span></div>
+
+    <span class="c1"># Obtain F5 installed cert *.crt local installation path</span>
+<div class="viewcode-block" id="F5Client.get_cert_local_path"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.get_cert_local_path">[docs]</a>    <span class="k">def</span> <span class="nf">get_cert_local_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">conn</span><span class="p">,</span><span class="n">cert_name</span><span class="p">):</span>
+        <span class="n">path_command</span> <span class="o">=</span> <span class="s2">&quot;find / -name &quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">+</span> <span class="n">cert_name</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">path_command</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Obtain F5 installed cert *.crt expiration timestamp in live action</span>
+<div class="viewcode-block" id="F5Client.get_cert_expiration_by_path"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.get_cert_expiration_by_path">[docs]</a>    <span class="k">def</span> <span class="nf">get_cert_expiration_by_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">conn</span><span class="p">,</span><span class="n">cert_path</span><span class="p">):</span>
+        <span class="n">path_command</span> <span class="o">=</span> <span class="s2">&quot;openssl x509 -noout -dates -in &quot;</span> <span class="o">+</span> <span class="n">cert_path</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_command</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">path_command</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;notAfter=&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">marker</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Obtain F5 installed cert *.crt expiration epoch timestamp by cert name</span>
+<div class="viewcode-block" id="F5Client.get_cert_expiration_by_name"><a class="viewcode-back" href="../../src.html#src.f5_client.F5Client.get_cert_expiration_by_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_cert_expiration_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">cert_name</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;sys file ssl-cert &quot;</span> <span class="o">+</span> <span class="n">cert_name</span>
+        <span class="n">obj_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_objs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">obj_val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;expiration-date&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;expiration-date&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">None</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">F5 Admin API</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Sam Li.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
