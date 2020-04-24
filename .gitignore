@@ -1,7 +1,6 @@
 *.DS_Store
 *.pyc
 *.bak
-*.zip
 
 # no configuration data
 conf/
@@ -23,4 +22,6 @@ conf/
 # no custom build script
 rebuild.sh
 
-# no f5-docs build source
+# no custom build script
+
+
