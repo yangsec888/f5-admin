@@ -37,7 +37,7 @@ Furthermore, the security admin can go to the next level of the playing field, b
 ### Running Requirement?
 As of November 11 2019, you'll need Python 3 environment to run the package.
 
-The package is originally developed in Python 2.7 environment of my Macbooks Pro. It works on Python 2.7 prior to version 1.1.15. If you don't have it yet, you'll need to [install Python 2.7](https://www.python.org/downloads/) into your machine. Since Python 2 is depreciated end of 2019, the package is converted into Python 3 since version 1.1.16. Note I have no plan to backward supporting 2.7.
+The package is originally developed in Python 2.7 environment of my Macbooks Pro. Since Python 2 is depreciated end of 2019, the package is converted into [Python 3](https://www.python.org/downloads/) from version 1.1.16 onward. Note I have no plan to backward supporting 2.7.
 
 Checking your Python version with the command below:
 ```bash
@@ -85,7 +85,7 @@ Successfully installed f5-admin-1.1.2
 Once installed, you'll be able to list it under your Python environment:
 ```bash
 $ pip list | grep f5
-f5-admin                               1.1.2
+f5-admin                               1.2.0
 ```
 
 ---

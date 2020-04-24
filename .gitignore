@@ -22,3 +22,6 @@ conf/
 
 # no custom build script
 rebuild.sh
+
+# no f5-docs build source
+# /f5-docs/
