@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+#
+print("""
+################################################################################
+# The goal of this program is to fetch all known F5 nodes ASM policies
+#  into the local cache directory.
+################################################################################
+# Version: 0.1, Date: April 23 2020
+# Author: Sam Li, yangsec888@gmail.com, x.x.1972
+# Usage:
+#         $ asm-fetch -h
+###############################################################################
+# Prerequisite:
+# a. F5 remote SSH access service are setup.
+# b. You have privileged access to the F5 TMOS configuration.
+###############################################################################
+""")
+#from client import F5Client
+import f5_admin
+from f5_admin.util import *
+import argparse
+from multiprocessing import Pool, TimeoutError
+
+# setup command argument switch
+parser = argparse.ArgumentParser(description='This program will retrieve F5 ASM policy files for you. ')
+parser.add_argument('-l','--list',help='(Optional) List of available F5 configuration files under the local cache directory. ', action='store_true', default=False,required=False)
+parser.add_argument('-n','--node', help='(Optional) Remote F5 hostname or IP address',required=False)
+parser.add_argument('-u','--user', help='(Optional) F5 box logon user ID. Default to root. ',required=False)
+parser.add_argument('-p','--password', nargs='+', help='(Optional) F5 box root password',required=False)
+parser.add_argument('-v','--verbose', help='(Optional) Verbose mode',action='store_true', default=False, required=False)
+parser.add_argument('-a','--all',help='(Optional) Fetech all the F5 running asm policie in the local cache directory. ', action='store_true', default=False, required=False)
+parser.add_argument('-f','--file',help='(Optional) File with list of F5 box as program input - to be fetched. ', required=False)
+
+args = parser.parse_args()
+# Setup F5 connection string
+if args.password:
+    credential = set_credential_1(args.user, *args.password)
+else:
+    credential = set_credential_2(args.user)
+
+# worker function
+def refresh(node):
+    try:
+        global credential
+        with f5_admin.F5Asm(credential, 7, args.verbose) as my_f5:
+            my_f5.load(node)
+        for x in my_f5.asm_list:
+            my_f5.fetch_asm_policy(x)
+        return len(my_f5.asm_list)
+    except Exception as e:
+        print('Fetch ASM Policy Failed:')
+        print(e)
+        return 0
+
+################################################################################
+#      Main Program
+################################################################################
+if __name__ == '__main__':
+    # simple command argument check
+    if args.list:
+        print(" ")#do nothing
+    elif not (args.node or args.all or args.file):
+        print("Command for help: ",__file__, " -h")
+        exit(1)
+    # Optional: list of current F5 cache file
+    if args.list:
+        print("F5 running configuration file under the cache directory: ")
+        with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+            if args.node:
+                my_f5.load(args.node)
+                cache_files = my_f5.get_cache_file_list()
+                for f in cache_files:
+                    print(f)
+                print("\nTotal F5 cache files: ", len(cache_files))
+            else:
+                nodes = my_f5.get_node_list()
+                for d in nodes:
+                    print(d)
+                print("\nTotal F5 cache nodes: ", len(nodes))
+        exit(0)
+
+    # Initialize a F5 instance
+    if args.node:
+        refresh(args.node)
+        exit(0)
+    elif args.all:
+        with f5_admin.F5Client(credential, 7, args.verbose) as my_f5:
+            nodes = my_f5.get_node_list()
+    elif args.file:
+        nodes = file_to_list(args.file)
+    else:
+        print("Argument error. Existing. ")
+        exit(1)
+
+    # Fire up 8 workers multiprocessing in parallel
+    my_pool = Pool(processes=8)
+    counter=0
+    for i in my_pool.imap_unordered(refresh, nodes):
+        counter+=i
+    print("Total F5 ASM policies fetched: ", counter)
+    exit(0)
+    # Print the confirmation
+    print("""
+All done. Bye!""")

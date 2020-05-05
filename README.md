@@ -9,8 +9,9 @@
   - [API Documents](#api-documents)
   - [Unit Testing](#unit-testing)
 - [Installation](#installs)
+  - [Install from Python Package Repository](#install-from-python-package-repository)
   - [Build from Source](#build-the-python-package-from-source)
-  - [Install from Python Package](#install-from-python-package)
+  - [Install from Build Package](#install-from-build-package)
   - [Verify the Installation](#verify-the-installation)
 - [To Do](#to-do)
 - [Who is this guy](#who-is-this-guy)
@@ -63,6 +64,11 @@ $ python -m unittest discover tests/
 ## Installations
 There are several ways you can install the Python package in your favorite system.
 
+### Install from Python Package Repository
+```bash
+$ pip install f5-admin
+```
+
 ### Build the Python Package from Source
 Once you [download and unzip](https://github.com/yangsec888/f5-admin/repository/master/archive.zip) the source code, find and run the rebuild.sh script under the source root directory:
 
@@ -70,7 +76,7 @@ Once you [download and unzip](https://github.com/yangsec888/f5-admin/repository/
 $ python setup.py sdist bdist_wheel
 ```
 
-### Install from Python Package
+### Install from Build Package
 After the successful build, you'll also have the .gz package under 'dist' sub-folder.  You have the option to distribute it to other systems. And you can then install the software by using the Python standard package management tool [pip](https://pypi.org/project/pip/).
 
 For example:

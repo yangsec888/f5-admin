@@ -15,7 +15,7 @@ import re
 import datetime
 import os
 from os import listdir,unlink,symlink,mkdir
-from os.path import isfile,isdir,join,dirname,realpath,getsize
+from os.path import isfile,islink,isdir,join,dirname,realpath,getsize
 import xmltodict
 from bs4 import BeautifulSoup
 
@@ -79,7 +79,7 @@ class F5Asm(F5Client):
 
     # function to fetch a copy of the running asm policy in xml format
     def fetch_asm_policy(self,asm_name):
-        #try:
+        try:
             print("Fetch the ASM policy on: ",self.node)
             conn = self.ssh_connect()
             today = datetime.date.today().strftime('%m%d%Y')
@@ -103,13 +103,13 @@ class F5Asm(F5Client):
             self.ssh_command(conn,cmd_01,"")
             conn.close()
             # remove then update the soft link
-            if isfile(cache_asm_file):
+            if islink(cache_asm_file):
                 unlink(cache_asm_file)
             symlink(local_file, cache_asm_file)
             print("F5 asm policy is saved to file: ", cache_asm_file)
-        #except Exception as e:
-        #    print('Fetch ASM Policy Failed:')
-        #    print(e)
+        except Exception as e:
+            print('Fetch ASM Policy Failed:')
+            print(e)
 
     # Python: Loop through all nested key-value pairs created by xmltodict,
     #   credit to Tadhg McDonald-Jensen in stackoverflow
