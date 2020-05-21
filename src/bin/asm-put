@@ -6,7 +6,7 @@ print("""
 #
 ################################################################################
 # Version: 0.5, Date:  December 20 2018
-# Author: Sam Li, yangsec888@gmail.com, x.x.1972
+# Author: Sam Li 
 # Usage:
 #         $ asm-put -h
 ###############################################################################
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         cmd_04 = "rm -rf " + f_dest
         cmd_05 = "tmsh save /sys config partitions all"
         cmd_06 = "tmsh run /cm config-sync to-group device-group-failover"
-        cmd_07 = "tmsh publish policy " + policy_name
+        cmd_07 = "tmsh publish asm policy " + policy_name
         # reload and apply the policy update
         for x in [cmd_02,cmd_03, cmd_07, cmd_04, cmd_05, cmd_06]:
             out = my_f5.ssh_command(ssh_f5, x, "")

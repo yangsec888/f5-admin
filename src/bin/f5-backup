@@ -6,7 +6,7 @@ print("""
 # or hotfix installation.
 ################################################################################
 # Version:      0.4,                                   Date: December 21 2018
-# Author:       Sam Li, yangsec888@gmail.com, x.x.1972
+# Author:       Sam Li 
 # Usage:
 #               $ f5-backup -h
 ###############################################################################

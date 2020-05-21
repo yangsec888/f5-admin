@@ -6,7 +6,7 @@ print("""
 #  into the local cache directory.
 ################################################################################
 # Version: 0.1, Date: April 23 2020
-# Author: Sam Li, yangsec888@gmail.com, x.x.1972
+# Author: Sam Li 
 # Usage:
 #         $ asm-fetch -h
 ###############################################################################

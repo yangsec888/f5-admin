@@ -14,8 +14,8 @@ with open("LICENSE.txt", "r") as fh:
 #)
 
 __license__ = lic
-__author__ = "Sam Li, yangsec888@gmail.com, x.x.1972"
-__version__ = "1.2.1"
+__author__ = "Sam Li, yangsec888@gmail.com"
+__version__ = "1.2.2"
 
 #__all__ = [
 #    'F5Client',
