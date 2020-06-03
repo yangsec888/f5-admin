@@ -6,7 +6,7 @@ print("""
 #  into the local cache directory.
 ################################################################################
 # Version: 0.2, Date: Nov 10 2018
-# Author: Sam Li 
+# Author: Sam Li
 # Usage:
 #         $ f5-fetch -h
 ###############################################################################
@@ -94,7 +94,6 @@ if __name__ == '__main__':
     for i in my_pool.imap_unordered(refresh, nodes):
         counter+=i
     print("Total F5 configuraton fetched: ", counter)
-    print("Please fetch xx-toolsprd pair manually as it has different admin password. ")
     exit(0)
     # Print the confirmation
     print("""

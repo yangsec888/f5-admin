@@ -5,7 +5,7 @@
 #
 ################################################################################
 #
-# Author: Sam Li 
+# Author: Sam Li
 #
 ################################################################################
 import re
@@ -285,7 +285,7 @@ class F5Client:
     def search_cert_in_client_ssl_profile(self,obj_val):
         for line in obj_val:
             if re.match(r'    cert ', line):
-                return line.split('cert')[1].strip()
+                return line.split('cert ')[1].strip()
         return ""
 
     # Function to extract the first clientssl profile name from the VIP configuration object

@@ -23,7 +23,7 @@ setup(
     keywords = "DIY F5 Admin API / Utilities",
     #long_description_content_type="text/markdown",
     url="https://github.com/yangsec888/f5-admin",
-    packages=['f5_admin', ],
+    packages=['f5_admin' ],
     package_dir={'f5_admin': 'src'},
     include_package_data=True,
     scripts=['src/bin/f5-get', 'src/bin/f5-put', 'src/bin/f5-run', 'src/bin/f5-runs', 'src/bin/f5-sync',
@@ -39,6 +39,7 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Build Tools",
     ],
+    python_requires='>=3.6',
     install_requires=[
         'paramiko>=2.4.1',
         'beautifulsoup4',
