@@ -16,7 +16,7 @@ class TestF5Client(unittest.TestCase):
         self.client.cache_config_base = dirname(realpath(__file__))
         self.client.cache_config_dir = self.client.cache_config_base
         self.client.cache_config = self.client.cache_config_dir + "/" + "f5_sample.txt"
-        self.client.top_objs=self.client.parse_conf_obj()
+        self.client.top_objs=self.client.parse_conf_file()
 
     def tearDown(self):
         pass
